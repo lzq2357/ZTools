@@ -35,6 +35,13 @@ const MODIFIER_CODES = [
 ]
 
 const DOUBLE_TAP_INTERVAL = 400
+const MODIFIER_NAMES = ['Command', 'Ctrl', 'Alt', 'Option', 'Shift']
+
+function isDoubleTapFormat(value: string): boolean {
+  if (!value) return false
+  const parts = value.split('+')
+  return parts.length === 2 && parts[0] === parts[1] && MODIFIER_NAMES.includes(parts[0])
+}
 
 const isRecording = ref(false)
 const recordedKeys = ref<string[]>([])
@@ -70,9 +77,8 @@ const displayHotkey = computed(() => {
     }
     return '请按下快捷键...'
   }
-  if (props.modelValue?.startsWith('Double+')) {
-    const modifier = props.modelValue.replace('Double+', '')
-    return `${modifier} × 2`
+  if (isDoubleTapFormat(props.modelValue)) {
+    return props.modelValue
   }
   return props.modelValue || props.placeholder
 })
@@ -191,13 +197,13 @@ function handleKeyUp(e: KeyboardEvent): void {
       now - lastModifierOnlyTap.value.time < DOUBLE_TAP_INTERVAL
     ) {
       clearDoubleTapTimer()
-      confirmShortcut(`Double+${modifier}`)
+      confirmShortcut(`${modifier}+${modifier}`)
       return
     }
 
     // 第一次 tap，开始等待第二次
     lastModifierOnlyTap.value = { modifier, time: now }
-    recordedKeys.value = [`${modifier} × 2 ?`]
+    recordedKeys.value = ['请再按一次非修饰键...']
 
     clearDoubleTapTimer()
     doubleTapTimer.value = setTimeout(() => {

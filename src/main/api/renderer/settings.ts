@@ -166,14 +166,19 @@ export class SettingsAPI {
     return getCurrentShortcut()
   }
 
-  // 判断是否为双击修饰键快捷键（如 "Double+Command"）
+  private static readonly MODIFIER_NAMES = ['Command', 'Ctrl', 'Alt', 'Option', 'Shift']
+
+  // 判断是否为双击修饰键快捷键（如 "Command+Command"）
   private isDoubleTapShortcut(shortcut: string): boolean {
-    return shortcut.startsWith('Double+')
+    const parts = shortcut.split('+')
+    return (
+      parts.length === 2 && parts[0] === parts[1] && SettingsAPI.MODIFIER_NAMES.includes(parts[0])
+    )
   }
 
   // 从双击快捷键字符串中提取修饰键名称
   private getDoubleTapModifier(shortcut: string): string {
-    return shortcut.replace('Double+', '')
+    return shortcut.split('+')[0]
   }
 
   // 注册全局快捷键
