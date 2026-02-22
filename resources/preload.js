@@ -490,6 +490,12 @@ window.ztools = {
       }
     },
 
+    // ==================== 应用快捷键 API ====================
+    registerAppShortcut: async (shortcut, target) =>
+      await electron.ipcRenderer.invoke('internal:register-app-shortcut', shortcut, target),
+    unregisterAppShortcut: async (shortcut) =>
+      await electron.ipcRenderer.invoke('internal:unregister-app-shortcut', shortcut),
+
     // ==================== 系统设置 API ====================
     setWindowOpacity: async (opacity) =>
       await electron.ipcRenderer.invoke('internal:set-window-opacity', opacity),

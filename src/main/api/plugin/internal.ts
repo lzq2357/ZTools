@@ -308,6 +308,24 @@ export class InternalPluginAPI {
       return await (settingsAPI as any).updateShortcut(shortcut)
     })
 
+    // ==================== 应用快捷键 API ====================
+    ipcMain.handle(
+      'internal:register-app-shortcut',
+      async (event, shortcut: string, target: string) => {
+        if (!requireInternalPlugin(this.pluginManager, event)) {
+          throw new PermissionDeniedError('internal:register-app-shortcut')
+        }
+        return await (settingsAPI as any).registerAppShortcut(shortcut, target)
+      }
+    )
+
+    ipcMain.handle('internal:unregister-app-shortcut', async (event, shortcut: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:unregister-app-shortcut')
+      }
+      return await (settingsAPI as any).unregisterAppShortcut(shortcut)
+    })
+
     // ==================== 系统设置 API ====================
     ipcMain.handle('internal:set-window-opacity', async (event, opacity: number) => {
       if (!requireInternalPlugin(this.pluginManager, event)) {

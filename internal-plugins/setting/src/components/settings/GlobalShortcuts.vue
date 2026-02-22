@@ -3,6 +3,24 @@
     <!-- 可滚动内容区 -->
     <Transition name="list-slide">
       <div v-show="!showEditor" class="scrollable-content">
+        <!-- Tab 切换 -->
+        <div class="tabs-container">
+          <div class="tab-group">
+            <button
+              :class="['tab-btn', { active: activeTab === 'global' }]"
+              @click="activeTab = 'global'"
+            >
+              全局快捷键
+            </button>
+            <button
+              :class="['tab-btn', { active: activeTab === 'app' }]"
+              @click="activeTab = 'app'"
+            >
+              应用快捷键
+            </button>
+          </div>
+        </div>
+
         <!-- 顶部添加按钮 -->
         <div class="panel-header">
           <button class="btn" @click="showAddEditor">添加快捷键</button>
@@ -67,10 +85,12 @@
           </div>
 
           <!-- 空状态 -->
-          <div v-if="!loading && shortcuts.length === 0" class="empty-state">
+          <div v-if="!loading && currentShortcuts.length === 0" class="empty-state">
             <Icon name="keyboard" :size="64" class="empty-icon" />
-            <div class="empty-text">暂无全局快捷键</div>
-            <div class="empty-hint">点击"添加快捷键"来创建你的第一个全局快捷键</div>
+            <div class="empty-text">暂无{{ activeTab === 'global' ? '全局' : '应用' }}快捷键</div>
+            <div class="empty-hint">
+              点击"添加快捷键"来创建你的第一个{{ activeTab === 'global' ? '全局' : '应用' }}快捷键
+            </div>
           </div>
         </div>
       </div>
@@ -82,6 +102,7 @@
         v-if="showEditor"
         :editing-shortcut="editingShortcut"
         :prefill-target="prefillTarget"
+        :is-app-shortcut="activeTab === 'app'"
         @back="closeEditor"
         @save="handleSave"
       />
@@ -114,13 +135,23 @@ interface GlobalShortcut {
   enabled: boolean
 }
 
-// 快捷键列表
-const shortcuts = ref<GlobalShortcut[]>([])
+// Tab 切换
+const activeTab = ref<'global' | 'app'>('global')
+
+// 全局快捷键列表
+const globalShortcuts = ref<GlobalShortcut[]>([])
+// 应用快捷键列表
+const appShortcuts = ref<GlobalShortcut[]>([])
 const isDeleting = ref(false)
 const loading = ref(true)
 
+// 当前显示的快捷键列表
+const currentShortcuts = computed(() => {
+  return activeTab.value === 'global' ? globalShortcuts.value : appShortcuts.value
+})
+
 const filteredShortcuts = computed(() =>
-  weightedSearch(shortcuts.value, props.searchQuery || '', [
+  weightedSearch(currentShortcuts.value, props.searchQuery || '', [
     { value: (s) => s.shortcut || '', weight: 10 },
     { value: (s) => s.target || '', weight: 5 }
   ])
@@ -128,10 +159,10 @@ const filteredShortcuts = computed(() =>
 
 // 编辑器状态
 const showEditor = ref(false)
-const editingShortcut = ref<GlobalShortcut | null>(null) // 正在编辑的快捷键
-const prefillTarget = ref('') // 预填目标指令（从外部导航过来时）
+const editingShortcut = ref<GlobalShortcut | null>(null)
+const prefillTarget = ref('')
 
-// 监听 autoAddTarget prop，自动打开添加编辑器并预填目标指令
+// 监听 autoAddTarget prop
 watch(
   () => props.autoAddTarget,
   (target) => {
@@ -145,29 +176,61 @@ watch(
   { immediate: true }
 )
 
-// 加载快捷键列表
-async function loadShortcuts(): Promise<void> {
+// 加载全局快捷键列表
+async function loadGlobalShortcuts(): Promise<void> {
   try {
     const data = await window.ztools.internal.dbGet('global-shortcuts')
-    shortcuts.value = data || []
-    console.log('加载全局快捷键:', shortcuts.value)
+    globalShortcuts.value = data || []
+    console.log('加载全局快捷键:', globalShortcuts.value)
   } catch (error) {
     console.error('加载全局快捷键失败:', error)
+  }
+}
+
+// 加载应用快捷键列表
+async function loadAppShortcuts(): Promise<void> {
+  try {
+    const data = await window.ztools.internal.dbGet('app-shortcuts')
+    appShortcuts.value = data || []
+    console.log('加载应用快捷键:', appShortcuts.value)
+  } catch (error) {
+    console.error('加载应用快捷键失败:', error)
+  }
+}
+
+// 加载所有快捷键
+async function loadShortcuts(): Promise<void> {
+  loading.value = true
+  try {
+    await Promise.all([loadGlobalShortcuts(), loadAppShortcuts()])
   } finally {
     loading.value = false
   }
 }
 
-// 保存快捷键列表
-async function saveShortcuts(): Promise<void> {
+// 保存全局快捷键列表
+async function saveGlobalShortcuts(): Promise<void> {
   try {
     await window.ztools.internal.dbPut(
       'global-shortcuts',
-      JSON.parse(JSON.stringify(shortcuts.value))
+      JSON.parse(JSON.stringify(globalShortcuts.value))
     )
     console.log('保存全局快捷键成功')
   } catch (error) {
     console.error('保存全局快捷键失败:', error)
+  }
+}
+
+// 保存应用快捷键列表
+async function saveAppShortcuts(): Promise<void> {
+  try {
+    await window.ztools.internal.dbPut(
+      'app-shortcuts',
+      JSON.parse(JSON.stringify(appShortcuts.value))
+    )
+    console.log('保存应用快捷键成功')
+  } catch (error) {
+    console.error('保存应用快捷键失败:', error)
   }
 }
 
@@ -198,10 +261,22 @@ async function handleSave(recordedShortcut: string, targetCommand: string): Prom
     return
   }
 
+  // 根据当前 tab 选择对应的逻辑
+  if (activeTab.value === 'global') {
+    await handleSaveGlobalShortcut(recordedShortcut, targetCommand)
+  } else {
+    await handleSaveAppShortcut(recordedShortcut, targetCommand)
+  }
+}
+
+// 保存全局快捷键（添加或编辑）
+async function handleSaveGlobalShortcut(
+  recordedShortcut: string,
+  targetCommand: string
+): Promise<void> {
   // 如果是编辑模式
   if (editingShortcut.value) {
-    // 检查新快捷键是否与其他快捷键冲突（排除自己）
-    const exists = shortcuts.value.some(
+    const exists = globalShortcuts.value.some(
       (s) => s.id !== editingShortcut.value!.id && s.shortcut === recordedShortcut
     )
     if (exists) {
@@ -212,31 +287,26 @@ async function handleSave(recordedShortcut: string, targetCommand: string): Prom
     const oldShortcut = editingShortcut.value.shortcut
 
     try {
-      // 如果快捷键改变了，需要先注销旧的
       if (oldShortcut !== recordedShortcut) {
         await window.ztools.internal.unregisterGlobalShortcut(oldShortcut)
       }
 
-      // 注册新快捷键
       const result = await window.ztools.internal.registerGlobalShortcut(
         recordedShortcut,
         targetCommand
       )
 
       if (result.success) {
-        // 更新列表
-        const index = shortcuts.value.findIndex((s) => s.id === editingShortcut.value!.id)
+        const index = globalShortcuts.value.findIndex((s) => s.id === editingShortcut.value!.id)
         if (index >= 0) {
-          shortcuts.value[index].shortcut = recordedShortcut
-          shortcuts.value[index].target = targetCommand
+          globalShortcuts.value[index].shortcut = recordedShortcut
+          globalShortcuts.value[index].target = targetCommand
         }
 
-        // 保存到数据库
-        await saveShortcuts()
+        await saveGlobalShortcuts()
         success('快捷键更新成功!')
         closeEditor()
       } else {
-        // 注册失败，恢复旧快捷键
         if (oldShortcut !== recordedShortcut) {
           await window.ztools.internal.registerGlobalShortcut(
             oldShortcut,
@@ -246,7 +316,6 @@ async function handleSave(recordedShortcut: string, targetCommand: string): Prom
         error(`快捷键注册失败: ${result.error}`)
       }
     } catch (err: any) {
-      // 注册失败，恢复旧快捷键
       if (oldShortcut !== recordedShortcut) {
         await window.ztools.internal.registerGlobalShortcut(
           oldShortcut,
@@ -260,13 +329,12 @@ async function handleSave(recordedShortcut: string, targetCommand: string): Prom
   }
 
   // 添加模式：检查快捷键是否已存在
-  const exists = shortcuts.value.some((s) => s.shortcut === recordedShortcut)
+  const exists = globalShortcuts.value.some((s) => s.shortcut === recordedShortcut)
   if (exists) {
     warning('该快捷键已存在，请使用其他快捷键')
     return
   }
 
-  // 添加到列表
   const newShortcut: GlobalShortcut = {
     id: Date.now().toString(),
     shortcut: recordedShortcut,
@@ -274,12 +342,9 @@ async function handleSave(recordedShortcut: string, targetCommand: string): Prom
     enabled: true
   }
 
-  shortcuts.value.push(newShortcut)
+  globalShortcuts.value.push(newShortcut)
+  await saveGlobalShortcuts()
 
-  // 保存到数据库
-  await saveShortcuts()
-
-  // 注册全局快捷键
   try {
     const result = await window.ztools.internal.registerGlobalShortcut(
       recordedShortcut,
@@ -289,23 +354,111 @@ async function handleSave(recordedShortcut: string, targetCommand: string): Prom
       success('快捷键添加成功!')
       closeEditor()
     } else {
-      // 如果注册失败，从列表中移除
-      shortcuts.value = shortcuts.value.filter((s) => s.id !== newShortcut.id)
-      await saveShortcuts()
+      globalShortcuts.value = globalShortcuts.value.filter((s) => s.id !== newShortcut.id)
+      await saveGlobalShortcuts()
       error(`快捷键注册失败: ${result.error}`)
     }
   } catch (err: any) {
-    // 如果注册失败，从列表中移除
-    shortcuts.value = shortcuts.value.filter((s) => s.id !== newShortcut.id)
-    await saveShortcuts()
+    globalShortcuts.value = globalShortcuts.value.filter((s) => s.id !== newShortcut.id)
+    await saveGlobalShortcuts()
     console.error('注册快捷键失败:', err)
     error(`注册快捷键失败: ${err.message || '未知错误'}`)
   }
 }
 
+// 保存应用快捷键（添加或编辑）
+async function handleSaveAppShortcut(
+  recordedShortcut: string,
+  targetCommand: string
+): Promise<void> {
+  // 如果是编辑模式
+  if (editingShortcut.value) {
+    const exists = appShortcuts.value.some(
+      (s) => s.id !== editingShortcut.value!.id && s.shortcut === recordedShortcut
+    )
+    if (exists) {
+      warning('该快捷键已被其他指令占用，请使用其他快捷键')
+      return
+    }
+
+    const oldShortcut = editingShortcut.value.shortcut
+
+    try {
+      if (oldShortcut !== recordedShortcut) {
+        await window.ztools.internal.unregisterAppShortcut(oldShortcut)
+      }
+
+      const result = await window.ztools.internal.registerAppShortcut(
+        recordedShortcut,
+        targetCommand
+      )
+
+      if (result.success) {
+        const index = appShortcuts.value.findIndex((s) => s.id === editingShortcut.value!.id)
+        if (index >= 0) {
+          appShortcuts.value[index].shortcut = recordedShortcut
+          appShortcuts.value[index].target = targetCommand
+        }
+
+        await saveAppShortcuts()
+        success('应用快捷键更新成功!')
+        closeEditor()
+      } else {
+        if (oldShortcut !== recordedShortcut) {
+          await window.ztools.internal.registerAppShortcut(oldShortcut, editingShortcut.value.target)
+        }
+        error(`应用快捷键注册失败: ${result.error}`)
+      }
+    } catch (err: any) {
+      if (oldShortcut !== recordedShortcut) {
+        await window.ztools.internal.registerAppShortcut(oldShortcut, editingShortcut.value.target)
+      }
+      console.error('更新应用快捷键失败:', err)
+      error(`更新应用快捷键失败: ${err.message || '未知错误'}`)
+    }
+    return
+  }
+
+  // 添加模式：检查快捷键是否已存在
+  const exists = appShortcuts.value.some((s) => s.shortcut === recordedShortcut)
+  if (exists) {
+    warning('该快捷键已存在，请使用其他快捷键')
+    return
+  }
+
+  const newShortcut: GlobalShortcut = {
+    id: Date.now().toString(),
+    shortcut: recordedShortcut,
+    target: targetCommand,
+    enabled: true
+  }
+
+  appShortcuts.value.push(newShortcut)
+  await saveAppShortcuts()
+
+  try {
+    const result = await window.ztools.internal.registerAppShortcut(recordedShortcut, targetCommand)
+    if (result.success) {
+      success('应用快捷键添加成功!')
+      closeEditor()
+    } else {
+      appShortcuts.value = appShortcuts.value.filter((s) => s.id !== newShortcut.id)
+      await saveAppShortcuts()
+      error(`应用快捷键注册失败: ${result.error}`)
+    }
+  } catch (err: any) {
+    appShortcuts.value = appShortcuts.value.filter((s) => s.id !== newShortcut.id)
+    await saveAppShortcuts()
+    console.error('注册应用快捷键失败:', err)
+    error(`注册应用快捷键失败: ${err.message || '未知错误'}`)
+  }
+}
+
 // 删除快捷键
 async function handleDelete(id: string): Promise<void> {
-  const shortcut = shortcuts.value.find((s) => s.id === id)
+  const isGlobal = activeTab.value === 'global'
+  const shortcutList = isGlobal ? globalShortcuts.value : appShortcuts.value
+  const shortcut = shortcutList.find((s) => s.id === id)
   if (!shortcut) return
 
   const confirmed = await confirm({
@@ -319,14 +472,22 @@ async function handleDelete(id: string): Promise<void> {
 
   isDeleting.value = true
   try {
-    // 注销全局快捷键
-    const result = await window.ztools.internal.unregisterGlobalShortcut(shortcut.shortcut)
-    if (result.success) {
-      // 从列表中移除
-      shortcuts.value = shortcuts.value.filter((s) => s.id !== id)
-      await saveShortcuts()
+    if (isGlobal) {
+      const result = await window.ztools.internal.unregisterGlobalShortcut(shortcut.shortcut)
+      if (result.success) {
+        globalShortcuts.value = globalShortcuts.value.filter((s) => s.id !== id)
+        await saveGlobalShortcuts()
+      } else {
+        error(`快捷键删除失败: ${result.error}`)
+      }
     } else {
-      error(`快捷键删除失败: ${result.error}`)
+      const result = await window.ztools.internal.unregisterAppShortcut(shortcut.shortcut)
+      if (result.success) {
+        appShortcuts.value = appShortcuts.value.filter((s) => s.id !== id)
+        await saveAppShortcuts()
+      } else {
+        error(`应用快捷键删除失败: ${result.error}`)
+      }
     }
   } catch (err: any) {
     console.error('删除快捷键失败:', err)
@@ -344,11 +505,11 @@ onMounted(() => {
 
 <style scoped>
 .content-panel {
-  position: relative; /* 使详情面板能够覆盖该区域 */
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止滑动时出现滚动条 */
+  overflow: hidden;
   background: var(--bg-color);
 }
 
@@ -359,6 +520,51 @@ onMounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px;
+}
+
+/* Tab 切换 */
+.tabs-container {
+  position: sticky;
+  top: 0;
+  background: var(--bg-color);
+  z-index: 10;
+  padding-bottom: 16px;
+}
+
+.tab-group {
+  display: flex;
+  gap: 6px;
+  background: var(--control-bg);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+  padding: 6px 14px;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.tab-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-color);
+}
+
+.tab-btn.active {
+  background: var(--active-bg);
+  color: var(--primary-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* 列表滑动动画 */

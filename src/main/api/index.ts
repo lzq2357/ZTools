@@ -200,16 +200,24 @@ class APIManager {
   private findCommandInPlugin(
     plugin: any,
     cmdName: string
-  ): { feature: any; cmdLabel: string } | null {
+  ): { feature: any; cmdLabel: string; cmdType: string } | null {
     const dynamicFeatures = pluginFeatureAPI.loadDynamicFeatures(plugin.name)
     const allFeatures = [...(plugin.features || []), ...dynamicFeatures]
 
     for (const feature of allFeatures) {
       if (feature.cmds && Array.isArray(feature.cmds)) {
         for (const cmd of feature.cmds) {
-          if (typeof cmd === 'object') continue
-          if (cmd === cmdName) {
-            return { feature, cmdLabel: cmd }
+          // 处理字符串类型的命令
+          if (typeof cmd === 'string') {
+            if (cmd === cmdName) {
+              return { feature, cmdLabel: cmd, cmdType: 'text' }
+            }
+          }
+          // 处理 object 类型的命令（regex 和 over 类型）
+          else if (typeof cmd === 'object' && cmd.label) {
+            if (cmd.label === cmdName) {
+              return { feature, cmdLabel: cmd.label, cmdType: cmd.type || 'text' }
+            }
           }
         }
       }
@@ -220,12 +228,13 @@ class APIManager {
   /**
    * 启动匹配到的插件命令
    */
-  private launchMatchedPlugin(plugin: any, feature: any, cmdLabel: string): void {
+  private launchMatchedPlugin(plugin: any, feature: any, cmdLabel: string, cmdType: string): void {
     const launchOptions = {
       path: plugin.path,
       type: 'plugin' as const,
       featureCode: feature.code,
       name: cmdLabel,
+      cmdType,
       param: { code: feature.code }
     }
     console.log(`[API] 启动插件:`, launchOptions)
@@ -249,6 +258,13 @@ class APIManager {
       type: 'direct',
       name: command.name
     })
+  }
+
+  /**
+   * 处理全局快捷键触发（供 windowManager 调用）
+   */
+  public async handleGlobalShortcutTrigger(target: string): Promise<void> {
+    return this.handleGlobalShortcut(target)
   }
 
   /**
@@ -289,16 +305,21 @@ class APIManager {
           return
         }
 
-        this.launchMatchedPlugin(plugin, result.feature, result.cmdLabel)
+        this.launchMatchedPlugin(plugin, result.feature, result.cmdLabel, result.cmdType)
       } else {
         // 格式: 指令名称（在所有插件和系统应用中搜索）
         const cmdName = target
-        const pluginMatches: { plugin: any; feature: any; cmdLabel: string }[] = []
+        const pluginMatches: { plugin: any; feature: any; cmdLabel: string; cmdType: string }[] = []
 
         for (const plugin of pluginList) {
           const result = this.findCommandInPlugin(plugin, cmdName)
           if (result) {
-            pluginMatches.push({ plugin, feature: result.feature, cmdLabel: result.cmdLabel })
+            pluginMatches.push({
+              plugin,
+              feature: result.feature,
+              cmdLabel: result.cmdLabel,
+              cmdType: result.cmdType
+            })
           }
         }
 
@@ -331,8 +352,8 @@ class APIManager {
 
         // 唯一匹配，直接启动
         if (pluginMatches.length === 1) {
-          const { plugin, feature, cmdLabel } = pluginMatches[0]
-          this.launchMatchedPlugin(plugin, feature, cmdLabel)
+          const { plugin, feature, cmdLabel, cmdType } = pluginMatches[0]
+          this.launchMatchedPlugin(plugin, feature, cmdLabel, cmdType)
         } else if (directCommand) {
           await this.launchDirectCommand(directCommand)
         }

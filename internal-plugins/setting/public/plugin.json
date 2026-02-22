@@ -19,9 +19,9 @@
     },
     {
       "code": "shortcuts",
-      "explain": "全局快捷键",
+      "explain": "快捷键",
       "icon": "logo.png",
-      "cmds": ["全局快捷键"]
+      "cmds": ["快捷键"]
     },
     {
       "code": "plugins",

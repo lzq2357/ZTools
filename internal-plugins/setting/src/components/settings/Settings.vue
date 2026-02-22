@@ -137,7 +137,7 @@ interface MenuItem {
 // 菜单项
 const menuItems: MenuItem[] = [
   { id: 'general', icon: 'settings', label: '通用设置' },
-  { id: 'shortcuts', icon: 'keyboard', label: '全局快捷键' },
+  { id: 'shortcuts', icon: 'keyboard', label: '快捷键' },
   { id: 'plugins', icon: 'plugin', label: '已安装插件' },
   { id: 'market', icon: 'store', label: '插件市场' },
   { id: 'ai-models', icon: 'brain', label: 'AI 模型' },

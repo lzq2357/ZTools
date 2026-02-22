@@ -57,6 +57,7 @@ class WindowManager {
   private autoBackToSearchConfig: string = 'never' // 自动返回搜索配置
   private lastFocusTarget: 'mainWindow' | 'plugin' | null = null // 窗口隐藏前的焦点状态
   private isRestoringFocus: boolean = false // 是否正在恢复焦点状态（防止 focus 事件监听器干扰）
+  private appShortcuts: Map<string, string> = new Map() // 应用快捷键映射表 (快捷键 -> 目标指令)
 
   /**
    * 更新焦点目标（供外部调用,如 pluginManager）
@@ -156,9 +157,10 @@ class WindowManager {
     this.mainWindow.webContents.setVisualZoomLevelLimits(1, 1) // 禁用未来缩放
 
     // 拦截缩放快捷键 (Ctrl+Plus, Ctrl+Minus, Ctrl+0, Ctrl+Wheel)
+    // 同时监听应用快捷键
     this.mainWindow.webContents.on('before-input-event', (event, input) => {
+      // 拦截缩放快捷键
       if (input.control || input.meta) {
-        // 拦截 Ctrl/Cmd + Plus/Minus/0
         if (
           input.key === '=' ||
           input.key === '+' ||
@@ -167,6 +169,23 @@ class WindowManager {
           input.key === '0'
         ) {
           event.preventDefault()
+          return
+        }
+      }
+
+      // 检查应用快捷键（仅在按键按下时触发，且未打开插件时生效）
+      if (input.type === 'keyDown') {
+        // 只在主搜索界面生效，插件打开时忽略应用快捷键
+        if (pluginManager.getCurrentPluginPath() !== null) {
+          return
+        }
+
+        const shortcut = this.buildShortcutString(input)
+        const target = this.appShortcuts.get(shortcut)
+        if (target) {
+          console.log(`应用快捷键触发: ${shortcut} -> ${target}`)
+          event.preventDefault()
+          this.handleAppShortcut(target)
         }
       }
     })
@@ -879,6 +898,112 @@ class WindowManager {
     } catch (error) {
       console.error('[Window] 打开设置插件失败:', error)
     }
+  }
+
+  /**
+   * 从 input 事件构建快捷键字符串
+   */
+  private buildShortcutString(input: Electron.Input): string {
+    const keys: string[] = []
+
+    // 修饰键（按标准顺序）
+    if (input.meta) {
+      keys.push(platform.isMacOS ? 'Command' : 'Meta')
+    }
+    if (input.control) {
+      keys.push(platform.isMacOS ? 'Ctrl' : 'Ctrl')
+    }
+    if (input.alt) {
+      keys.push(platform.isMacOS ? 'Option' : 'Alt')
+    }
+    if (input.shift) {
+      keys.push('Shift')
+    }
+
+    // 主键（转换为标准格式）
+    const mainKey = this.normalizeKey(input.key)
+    if (mainKey && !WindowManager.MODIFIER_NAMES.includes(mainKey)) {
+      keys.push(mainKey)
+    }
+
+    return keys.join('+')
+  }
+
+  /**
+   * 标准化按键名称
+   */
+  private normalizeKey(key: string): string {
+    // 字母转大写
+    if (key.length === 1 && /[a-z]/.test(key)) {
+      return key.toUpperCase()
+    }
+
+    // 数字键
+    if (key.length === 1 && /[0-9]/.test(key)) {
+      return key
+    }
+
+    // 特殊键映射
+    const keyMap: Record<string, string> = {
+      ' ': 'Space',
+      Enter: 'Enter',
+      Escape: 'Escape',
+      Tab: 'Tab',
+      Backspace: 'Backspace',
+      Delete: 'Delete',
+      ArrowUp: 'Up',
+      ArrowDown: 'Down',
+      ArrowLeft: 'Left',
+      ArrowRight: 'Right',
+      Home: 'Home',
+      End: 'End',
+      PageUp: 'PageUp',
+      PageDown: 'PageDown'
+    }
+
+    return keyMap[key] || key
+  }
+
+  /**
+   * 处理应用快捷键触发
+   */
+  private async handleAppShortcut(target: string): Promise<void> {
+    try {
+      // 调用 API 管理器的全局快捷键处理方法
+      await api.handleGlobalShortcutTrigger(target)
+    } catch (error) {
+      console.error('[Window] 处理应用快捷键失败:', error)
+    }
+  }
+
+  /**
+   * 注册应用快捷键
+   */
+  public registerAppShortcut(shortcut: string, target: string): boolean {
+    try {
+      this.appShortcuts.set(shortcut, target)
+      console.log(`成功注册应用快捷键: ${shortcut} -> ${target}`)
+      return true
+    } catch (error) {
+      console.error('[Window] 注册应用快捷键失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 注销应用快捷键
+   */
+  public unregisterAppShortcut(shortcut: string): void {
+    this.appShortcuts.delete(shortcut)
+    console.log(`成功注销应用快捷键: ${shortcut}`)
+  }
+
+  /**
+   * 清空所有应用快捷键
+   */
+  public unregisterAllAppShortcuts(): void {
+    this.appShortcuts.clear()
+    console.log('[Window] 已清空所有应用快捷键')
   }
 }
 

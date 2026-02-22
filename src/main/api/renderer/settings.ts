@@ -44,6 +44,14 @@ export class SettingsAPI {
       this.unregisterGlobalShortcut(shortcut)
     )
 
+    // 应用快捷键
+    ipcMain.handle('register-app-shortcut', (_event, shortcut: string, target: string) =>
+      this.registerAppShortcut(shortcut, target)
+    )
+    ipcMain.handle('unregister-app-shortcut', (_event, shortcut: string) =>
+      this.unregisterAppShortcut(shortcut)
+    )
+
     // 临时快捷键录制
     ipcMain.handle('start-hotkey-recording', () => this.startHotkeyRecording())
   }
@@ -100,6 +108,8 @@ export class SettingsAPI {
 
       // 加载并注册全局快捷键
       await this.loadAndRegisterGlobalShortcuts()
+      // 加载并注册应用快捷键
+      await this.loadAndRegisterAppShortcuts()
     } catch (error) {
       console.error('[Settings] 加载设置失败:', error)
     }
@@ -122,6 +132,26 @@ export class SettingsAPI {
       }
     } catch (error) {
       console.error('[Settings] 加载全局快捷键失败:', error)
+    }
+  }
+
+  // 加载并注册应用快捷键
+  private async loadAndRegisterAppShortcuts(): Promise<void> {
+    try {
+      const shortcuts = await databaseAPI.dbGet('app-shortcuts')
+      if (shortcuts && Array.isArray(shortcuts)) {
+        for (const shortcut of shortcuts) {
+          if (shortcut.enabled && shortcut.shortcut && shortcut.target) {
+            try {
+              await this.registerAppShortcut(shortcut.shortcut, shortcut.target)
+            } catch (error) {
+              console.error(`注册应用快捷键失败: ${shortcut.shortcut}`, error)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Settings] 加载应用快捷键失败:', error)
     }
   }
 
@@ -344,6 +374,33 @@ export class SettingsAPI {
       return { success: true }
     } catch (error: unknown) {
       console.error('[Settings] 设置插件默认高度失败:', error)
+      return { success: false, error: error instanceof Error ? error.message : '未知错误' }
+    }
+  }
+
+  // 注册应用快捷键
+  private async registerAppShortcut(shortcut: string, target: string): Promise<any> {
+    try {
+      const success = windowManager.registerAppShortcut(shortcut, target)
+      if (!success) {
+        return { success: false, error: '应用快捷键注册失败' }
+      }
+      console.log(`成功注册应用快捷键: ${shortcut} -> ${target}`)
+      return { success: true }
+    } catch (error: unknown) {
+      console.error('[Settings] 注册应用快捷键失败:', error)
+      return { success: false, error: error instanceof Error ? error.message : '未知错误' }
+    }
+  }
+
+  // 注销应用快捷键
+  private async unregisterAppShortcut(shortcut: string): Promise<any> {
+    try {
+      windowManager.unregisterAppShortcut(shortcut)
+      console.log(`成功注销应用快捷键: ${shortcut}`)
+      return { success: true }
+    } catch (error: unknown) {
+      console.error('[Settings] 注销应用快捷键失败:', error)
       return { success: false, error: error instanceof Error ? error.message : '未知错误' }
     }
   }

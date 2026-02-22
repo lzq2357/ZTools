@@ -652,7 +652,7 @@ const isClearing = ref(false)
 // 内存信息状态
 const memoryInfo = ref<{ private: number; shared: number; total: number } | null>(null)
 const memoryLoading = ref(false)
-let memoryUpdateTimer: NodeJS.Timeout | null = null
+let memoryUpdateTimer: ReturnType<typeof setTimeout> | null = null
 
 // 配置 marked
 marked.setOptions({

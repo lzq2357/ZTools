@@ -1,7 +1,23 @@
 <template>
-  <DetailPanel :title="editingShortcut ? '编辑全局快捷键' : '添加全局快捷键'" @back="emit('back')">
+  <DetailPanel
+    :title="
+      editingShortcut
+        ? isAppShortcut
+          ? '编辑应用快捷键'
+          : '编辑全局快捷键'
+        : isAppShortcut
+          ? '添加应用快捷键'
+          : '添加全局快捷键'
+    "
+    @back="emit('back')"
+  >
     <div class="editor-wrapper">
       <div class="editor-content">
+        <!-- 快捷键类型说明 -->
+        <div v-if="isAppShortcut" class="form-notice">
+          应用快捷键仅在 ZTools 窗口激活时生效，不会与其他应用冲突
+        </div>
+
         <!-- 快捷键录制 -->
         <div class="form-item">
           <label class="form-label">快捷键</label>
@@ -22,7 +38,9 @@
             class="input"
             placeholder="例如：微信、翻译"
           />
-          <span class="form-hint">支持「指令名称」或「插件名称/指令名称」格式，建议加上插件名称以避免歧义</span>
+          <span class="form-hint"
+            >支持「指令名称」或「插件名称/指令名称」格式，建议加上插件名称以避免歧义</span
+          >
         </div>
       </div>
 
@@ -51,6 +69,7 @@ interface GlobalShortcut {
 const props = defineProps<{
   editingShortcut?: GlobalShortcut | null
   prefillTarget?: string
+  isAppShortcut?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -107,6 +126,17 @@ onMounted(() => {
 .editor-content {
   flex: 1;
   padding: 24px;
+}
+
+.form-notice {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: var(--primary-light-bg);
+  border: 1px solid var(--primary-color);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--primary-color);
+  line-height: 1.5;
 }
 
 .form-item {

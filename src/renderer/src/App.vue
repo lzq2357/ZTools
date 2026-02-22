@@ -689,11 +689,28 @@ onMounted(async () => {
   // 监听全局快捷键触发的启动事件
   window.ztools.onIpcLaunch((options) => {
     console.log('收到 IPC 启动事件:', options)
+    
     // 转换旧的 'app' 类型为新的 'direct' 类型
-    const launchOptions = {
+    const launchOptions: any = {
       ...options,
       type: options.type === 'app' ? ('direct' as const) : options.type
     }
+
+    // 如果是插件类型，且没有传递 param.payload，则使用当前搜索框内容
+    if (options.type === 'plugin' && (!options.param || !options.param.payload)) {
+      console.log('[IPC Launch] 使用当前搜索框内容作为 payload:', searchQuery.value)
+      launchOptions.param = {
+        ...options.param,
+        payload: searchQuery.value,
+        type: options.cmdType || 'text',
+        inputState: {
+          searchQuery: searchQuery.value,
+          pastedImage: pastedImageData.value,
+          pastedFiles: pastedFilesData.value
+        }
+      }
+    }
+
     window.ztools.launch(launchOptions)
   })
 
