@@ -221,6 +221,13 @@ class DetachedWindowManager {
             win.webContents.focus()
             win.webContents.send('focus-sub-input')
           }, 100) // 延迟 100ms，确保 Vue 组件已经渲染
+        } else {
+          // 插件视图聚焦：分离前焦点在插件上，分离后恢复插件焦点
+          setTimeout(() => {
+            if (!pluginView.webContents.isDestroyed()) {
+              pluginView.webContents.focus()
+            }
+          }, 100)
         }
       })
 
@@ -278,9 +285,6 @@ class DetachedWindowManager {
 
       // 显示窗口
       win.show()
-
-      // 让插件视图获取焦点
-      pluginView.webContents.focus()
 
       // 注册开发者工具快捷键
       pluginView.webContents.on('focus', () => {
