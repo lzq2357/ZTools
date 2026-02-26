@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import OpenAI from 'openai'
 import lmdbInstance from '../../core/lmdb/lmdbInstance'
 import type { AiModel } from '../renderer/aiModels'
@@ -77,11 +78,11 @@ const MAX_TOOL_ROUNDS = 25
  * 直接控制消息格式，确保 reasoning_content 等非标准字段正确透传
  */
 class PluginAiAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
   private mainWindow: Electron.BrowserWindow | null = null
   private abortControllers: Map<string, AbortController> = new Map()
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
@@ -91,7 +92,7 @@ class PluginAiAPI {
     // 非流式调用 AI
     ipcMain.handle('plugin:ai-call', async (event, requestId: string, option: AiOption) => {
       try {
-        const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+        const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
         if (!pluginInfo) {
           return { success: false, error: '无法获取插件信息' }
         }
@@ -106,7 +107,7 @@ class PluginAiAPI {
     // 流式调用 AI
     ipcMain.handle('plugin:ai-call-stream', async (event, requestId: string, option: AiOption) => {
       try {
-        const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+        const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
         if (!pluginInfo) {
           return { success: false, error: '无法获取插件信息' }
         }
@@ -145,7 +146,7 @@ class PluginAiAPI {
     // Function Calling - 调用插件函数
     ipcMain.handle('plugin:ai-call-function', async (event, functionName: string, args: string) => {
       try {
-        const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+        const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
         if (!pluginInfo) {
           return { success: false, error: '无法获取插件信息' }
         }
@@ -170,7 +171,7 @@ class PluginAiAPI {
     status: 'idle' | 'sending' | 'receiving',
     webContents: Electron.WebContents
   ): void {
-    const pluginInfo = this.pluginManager.getPluginInfoByWebContents(webContents)
+    const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(webContents)
     if (!pluginInfo) return
 
     const detachedWindows = detachedWindowManager.getAllWindows()

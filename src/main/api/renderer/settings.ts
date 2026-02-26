@@ -1,4 +1,5 @@
 import { app, globalShortcut, ipcMain, nativeTheme } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import { getCurrentShortcut, updateShortcut } from '../../index.js'
 
 import doubleTapManager from '../../core/doubleTapManager.js'
@@ -12,9 +13,9 @@ import databaseAPI from '../shared/database'
  */
 export class SettingsAPI {
   private mainWindow: Electron.BrowserWindow | null = null
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
@@ -98,7 +99,7 @@ export class SettingsAPI {
         }
         // 应用窗口默认高度设置
         if (data.windowDefaultHeight !== undefined) {
-          this.pluginManager.setPluginDefaultHeight(data.windowDefaultHeight)
+          this.pluginManager?.setPluginDefaultHeight(data.windowDefaultHeight)
           console.log('[Settings] 启动时应用插件默认高度设置:', data.windowDefaultHeight)
         }
       }
@@ -369,7 +370,7 @@ export class SettingsAPI {
   // 设置窗口默认高度
   public setWindowDefaultHeight(height: number): { success: boolean; error?: string } {
     try {
-      this.pluginManager.setPluginDefaultHeight(height)
+      this.pluginManager?.setPluginDefaultHeight(height)
       console.log('[Settings] 插件默认高度已更新:', height)
       return { success: true }
     } catch (error: unknown) {

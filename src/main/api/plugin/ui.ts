@@ -1,4 +1,5 @@
 import { ipcMain, nativeTheme, Notification } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import { fileURLToPath } from 'url'
 import detachedWindowManager from '../../core/detachedWindowManager'
 
@@ -7,9 +8,9 @@ import detachedWindowManager from '../../core/detachedWindowManager'
  */
 export class PluginUIAPI {
   private mainWindow: Electron.BrowserWindow | null = null
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
@@ -66,7 +67,7 @@ export class PluginUIAPI {
         body: body
       }
 
-      const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+      const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
       if (pluginInfo) {
         options.title = pluginInfo.name
         if (pluginInfo.logo) {
@@ -109,12 +110,12 @@ export class PluginUIAPI {
 
       // 如果插件在主窗口，更新 pluginManager 的状态
       if (targetWindow === this.mainWindow) {
-        this.pluginManager.setSubInputPlaceholder(placeholder || '搜索')
+        this.pluginManager?.setSubInputPlaceholder(placeholder || '搜索')
         // 更新可见性状态
         if (event) {
-          const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+          const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
           if (pluginInfo) {
-            this.pluginManager.setSubInputVisible(pluginInfo.path, true)
+            this.pluginManager?.setSubInputVisible(pluginInfo.path, true)
           }
         }
       }
@@ -151,9 +152,9 @@ export class PluginUIAPI {
 
       // 如果插件在主窗口，更新 pluginManager 的状态
       if (targetWindow === this.mainWindow && event) {
-        const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+        const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
         if (pluginInfo) {
-          this.pluginManager.setSubInputVisible(pluginInfo.path, false)
+          this.pluginManager?.setSubInputVisible(pluginInfo.path, false)
         }
       }
 

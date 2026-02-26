@@ -1,4 +1,5 @@
 import { ipcMain, Notification } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import windowManager from '../../managers/windowManager'
 import databaseAPI from '../shared/database'
 import { pluginFeatureAPI } from './feature'
@@ -8,9 +9,9 @@ import { pluginFeatureAPI } from './feature'
  */
 export class PluginRedirectAPI {
   private mainWindow: Electron.BrowserWindow | null = null
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
@@ -201,7 +202,7 @@ export class PluginRedirectAPI {
     // 先返回主页面
     if (this.pluginManager?.getCurrentPluginPath() !== null) {
       console.log('[Redirect] 检测到插件正在显示，先隐藏插件并返回搜索页')
-      this.pluginManager.hidePluginView()
+      this.pluginManager?.hidePluginView()
       // 通知渲染进程返回搜索页面
       windowManager.notifyBackToSearch()
     }

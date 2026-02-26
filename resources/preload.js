@@ -39,6 +39,10 @@ window.ztools = {
   // 是否深色主题
   isDarkColors: () => electron.ipcRenderer.sendSync('is-dark-colors'),
   sendInputEvent: async (event) => await electron.ipcRenderer.invoke('send-input-event', event),
+  // 在当前页面中查找文本
+  findInPage: (text, options) => electron.ipcRenderer.invoke('find-in-page', text, options),
+  // 停止查找
+  stopFindInPage: (action = 'clearSelection') => electron.ipcRenderer.invoke('stop-find-in-page', action),
   // 模拟键盘按键
   simulateKeyboardTap: (key, ...modifiers) => {
     console.log('插件请求模拟键盘按键:', { key, modifiers })

@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 
 /**
  * HTTP API - 插件专用
@@ -17,10 +18,10 @@ export class PluginHttpAPI {
       callback: (response: Electron.BeforeSendResponse) => void
     ) => void
   > = new Map()
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(pluginManager?: any): void {
-    this.pluginManager = pluginManager
+  public init(pluginManager?: PluginManager): void {
+    this.pluginManager = pluginManager ?? null
     this.setupIPC()
   }
 

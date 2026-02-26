@@ -1,4 +1,5 @@
 import { ipcMain, webContents } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import pluginWindowManager from '../../core/pluginWindowManager.js'
 import windowManager from '../../managers/windowManager.js'
 import detachedWindowManager from '../../core/detachedWindowManager.js'
@@ -7,10 +8,10 @@ import detachedWindowManager from '../../core/detachedWindowManager.js'
  * 插件独立窗口管理API - 插件专用
  */
 export class PluginWindowAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
   private mainWindow: Electron.BrowserWindow | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.pluginManager = pluginManager
     this.mainWindow = mainWindow
     this.setupIPC()
@@ -26,7 +27,7 @@ export class PluginWindowAPI {
         options: Electron.BrowserWindowConstructorOptions,
         callbackId: string
       ) => {
-        const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+        const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
         if (!pluginInfo) {
           console.error('[PluginWindow] 创建窗口失败: 未找到插件信息')
           event.returnValue = null

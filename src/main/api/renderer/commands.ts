@@ -1,4 +1,5 @@
 import { app, ipcMain, shell } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { normalizeIconPath } from '../../common/iconUtils'
@@ -29,7 +30,7 @@ interface LastMatchState {
  */
 export class AppsAPI {
   private mainWindow: Electron.BrowserWindow | null = null
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
   private launchParam: any = null
   private lastMatchState: LastMatchState | null = null
   private isLocalAppSearchEnabled = true
@@ -45,7 +46,7 @@ export class AppsAPI {
     }
   }
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()

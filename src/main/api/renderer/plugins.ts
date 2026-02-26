@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip'
+import type { PluginManager } from '../../managers/pluginManager'
 import { app, dialog, ipcMain } from 'electron'
 import { promises as fs } from 'fs'
 import path from 'path'
@@ -23,9 +24,9 @@ const PLUGIN_DIR = path.join(app.getPath('userData'), 'plugins')
  */
 export class PluginsAPI {
   private mainWindow: Electron.BrowserWindow | null = null
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
@@ -66,7 +67,7 @@ export class PluginsAPI {
       'query-main-push',
       async (_event, pluginPath: string, featureCode: string, queryData: any) => {
         try {
-          return await this.pluginManager.queryMainPush(pluginPath, featureCode, queryData)
+          return await this.pluginManager?.queryMainPush(pluginPath, featureCode, queryData)
         } catch (error: unknown) {
           console.error('[Plugins] mainPush 查询失败:', error)
           return []
@@ -79,7 +80,7 @@ export class PluginsAPI {
       'select-main-push',
       async (_event, pluginPath: string, featureCode: string, selectData: any) => {
         try {
-          return await this.pluginManager.selectMainPush(pluginPath, featureCode, selectData)
+          return await this.pluginManager?.selectMainPush(pluginPath, featureCode, selectData)
         } catch (error: unknown) {
           console.error('[Plugins] mainPush 选择失败:', error)
           return false
@@ -91,7 +92,7 @@ export class PluginsAPI {
       'call-headless-plugin',
       async (_event, pluginPath: string, featureCode: string, action: any) => {
         try {
-          const result = await this.pluginManager.callHeadlessPluginMethod(
+          const result = await this.pluginManager?.callHeadlessPluginMethod(
             pluginPath,
             featureCode,
             action
@@ -106,7 +107,7 @@ export class PluginsAPI {
 
     ipcMain.handle('get-plugin-memory-info', async (_event, pluginPath: string) => {
       try {
-        const memoryInfo = await this.pluginManager.getPluginMemoryInfo(pluginPath)
+        const memoryInfo = await this.pluginManager?.getPluginMemoryInfo(pluginPath)
         return { success: true, data: memoryInfo }
       } catch (error: unknown) {
         console.error('[Plugins] 获取插件内存信息失败:', error)

@@ -1,13 +1,14 @@
 import { ipcMain } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import { WindowManager } from '../../core/native/index.js'
 
 /**
  * 输入事件API - 插件专用
  */
 export class PluginInputAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(pluginManager: any): void {
+  public init(pluginManager: PluginManager): void {
     this.pluginManager = pluginManager
     this.setupIPC()
   }
@@ -32,13 +33,52 @@ export class PluginInputAPI {
 
     // 检查当前插件是否处于开发模式
     ipcMain.on('is-dev', (event) => {
-      event.returnValue = this.pluginManager.isPluginDev(event.sender.id)
+      event.returnValue = this.pluginManager?.isPluginDev(event.sender.id) ?? false
     })
 
     // 获取当前 WebContents ID
     ipcMain.on('get-web-contents-id', (event) => {
       event.returnValue = event.sender.id
     })
+
+    // 在当前插件页面中查找文本
+    ipcMain.handle('find-in-page', (event, text: string, options?: Electron.FindInPageOptions) => {
+      try {
+        const webContents = event.sender
+        if (webContents.isDestroyed()) {
+          return { success: false, error: '页面已销毁' }
+        }
+        const requestId = webContents.findInPage(text, options)
+        return { success: true, requestId }
+      } catch (error: unknown) {
+        console.error('[PluginInput] 页面内查找失败:', error)
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '未知错误'
+        }
+      }
+    })
+
+    // 停止页面内查找
+    ipcMain.handle(
+      'stop-find-in-page',
+      (event, action: 'clearSelection' | 'keepSelection' | 'activateSelection') => {
+        try {
+          const webContents = event.sender
+          if (webContents.isDestroyed()) {
+            return { success: false, error: '页面已销毁' }
+          }
+          webContents.stopFindInPage(action)
+          return { success: true }
+        } catch (error: unknown) {
+          console.error('[PluginInput] 停止页面内查找失败:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : '未知错误'
+          }
+        }
+      }
+    )
   }
 
   private sendInputEvent(

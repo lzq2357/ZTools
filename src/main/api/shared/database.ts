@@ -1,4 +1,5 @@
 import { ipcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import lmdbInstance from '../../core/lmdb/lmdbInstance'
 import pluginWindowManager from '../../core/pluginWindowManager'
 
@@ -7,9 +8,9 @@ import pluginWindowManager from '../../core/pluginWindowManager'
  * 提供同步和异步两种API版本
  */
 export class DatabaseAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
-  public init(pluginManager: any): void {
+  public init(pluginManager: PluginManager): void {
     this.pluginManager = pluginManager
     this.setupIPC()
   }

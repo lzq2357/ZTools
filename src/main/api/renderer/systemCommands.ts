@@ -1,4 +1,5 @@
 import { exec } from 'child_process'
+import type { PluginManager } from '../../managers/pluginManager'
 import { BrowserWindow, clipboard, shell } from 'electron'
 import { promisify } from 'util'
 import { GLOBAL_SCROLLBAR_CSS } from '../../core/globalStyles'
@@ -7,7 +8,7 @@ import webSearchAPI from './webSearch'
 
 interface SystemCommandContext {
   mainWindow: Electron.BrowserWindow | null
-  pluginManager: any
+  pluginManager: PluginManager | null
 }
 
 /**

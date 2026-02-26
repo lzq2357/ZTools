@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import lmdbInstance from '../../core/lmdb/lmdbInstance'
 import windowManager from '../../managers/windowManager'
 
@@ -19,11 +20,11 @@ interface DynamicFeaturesData {
  * 允许插件在运行时动态添加/删除功能
  */
 export class PluginFeatureAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
   private notifyTimer: NodeJS.Timeout | null = null
   private readonly NOTIFY_DEBOUNCE_DELAY = 3000 // 3秒防抖延迟
 
-  public init(pluginManager: any): void {
+  public init(pluginManager: PluginManager): void {
     this.pluginManager = pluginManager
     this.setupIPC()
   }
@@ -140,7 +141,7 @@ export class PluginFeatureAPI {
    * 获取调用插件的名称
    */
   private getPluginName(event: Electron.IpcMainEvent): string | null {
-    const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+    const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
     return pluginInfo ? pluginInfo.name : null
   }
 

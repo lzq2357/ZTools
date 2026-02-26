@@ -1,4 +1,5 @@
 import { IpcMainInvokeEvent, ipcMain } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import logCollector from '../../core/logCollector.js'
 import detachedWindowManager from '../../core/detachedWindowManager.js'
 import floatingBallManager from '../../core/floatingBallManager.js'
@@ -29,7 +30,8 @@ class PermissionDeniedError extends Error {
  * @param event IPC 事件对象
  * @returns 是否允许调用（内置插件或主渲染进程）
  */
-export function requireInternalPlugin(pluginManager: any, event: IpcMainInvokeEvent): boolean {
+export function requireInternalPlugin(pluginManager: PluginManager | null, event: IpcMainInvokeEvent): boolean {
+  if (!pluginManager) return true // 没有 pluginManager，允许通过
   const pluginInfo = pluginManager.getPluginInfoByWebContents(event.sender)
 
   if (!pluginInfo) {
@@ -47,10 +49,10 @@ export function requireInternalPlugin(pluginManager: any, event: IpcMainInvokeEv
  * 采用转发策略：将内置插件的 API 调用转发到已有的 renderer API
  */
 export class InternalPluginAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
   private mainWindow: Electron.BrowserWindow | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
@@ -244,7 +246,7 @@ export class InternalPluginAPI {
         throw new PermissionDeniedError('internal:get-plugin-memory-info')
       }
       try {
-        const memoryInfo = await this.pluginManager.getPluginMemoryInfo(pluginPath)
+        const memoryInfo = await this.pluginManager?.getPluginMemoryInfo(pluginPath)
         return { success: true, data: memoryInfo }
       } catch (error: unknown) {
         console.error('[Internal API] 获取内存信息失败:', error)

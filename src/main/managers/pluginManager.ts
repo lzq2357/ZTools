@@ -29,7 +29,7 @@ interface PluginViewInfo {
   logo?: string
   isDevelopment?: boolean
 }
-class PluginManager {
+export class PluginManager {
   // ==================== 插件配置/视图创建辅助方法 ====================
 
   /**
@@ -625,6 +625,16 @@ class PluginManager {
       console.error('[Plugin] 终止插件失败:', error)
       return false
     }
+  }
+
+  // 通过插件名称终止插件
+  public killPluginByName(pluginName: string): boolean {
+    const plugin = this.pluginViews.find((v) => v.name === pluginName)
+    if (!plugin) {
+      console.log('[Plugin] 未找到插件:', pluginName)
+      return false
+    }
+    return this.killPlugin(plugin.path)
   }
 
   // 终止所有插件
@@ -1277,6 +1287,7 @@ class PluginManager {
     name: string
     path: string
     isInternal: boolean
+    logo?: string
   } | null {
     // 1. 先检查主窗口中的插件视图
     for (const pluginViewInfo of this.pluginViews) {
@@ -1284,7 +1295,8 @@ class PluginManager {
         return {
           name: pluginViewInfo.name,
           path: pluginViewInfo.path,
-          isInternal: isInternalPlugin(pluginViewInfo.name)
+          isInternal: isInternalPlugin(pluginViewInfo.name),
+          logo: pluginViewInfo.logo
         }
       }
     }

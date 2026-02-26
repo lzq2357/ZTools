@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain, Notification } from 'electron'
+import type { PluginManager } from '../managers/pluginManager'
 
 // 共享API（主程序和插件都能用）
 import clipboardAPI from './shared/clipboard'
@@ -43,12 +44,12 @@ import superPanelManager from '../core/superPanelManager'
  */
 class APIManager {
   private mainWindow: BrowserWindow | null = null
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
 
   /**
    * 初始化所有API模块
    */
-  public init(mainWindow: BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
 
@@ -110,10 +111,10 @@ class APIManager {
     ipcMain.handle('is-windows', () => systemSettingsAPI.isWindows())
 
     // 打开插件开发者工具
-    ipcMain.handle('open-plugin-devtools', () => {
+    ipcMain.handle('open-plugin-devtools', async () => {
       try {
         if (this.pluginManager) {
-          const result = this.pluginManager.openPluginDevTools()
+          const result = await this.pluginManager.openPluginDevTools()
           if (result) {
             return { success: true }
           } else {

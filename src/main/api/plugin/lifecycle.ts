@@ -1,15 +1,16 @@
 import { ipcMain } from 'electron'
+import type { PluginManager } from '../../managers/pluginManager'
 import windowManager from '../../managers/windowManager'
 
 /**
  * 插件生命周期API - 插件专用
  */
 export class PluginLifecycleAPI {
-  private pluginManager: any = null
+  private pluginManager: PluginManager | null = null
   private launchParam: any = null
   private mainWindow: Electron.BrowserWindow | null = null
 
-  public init(mainWindow: Electron.BrowserWindow, pluginManager: any): void {
+  public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.pluginManager = pluginManager
     this.mainWindow = mainWindow
     this.setupIPC()
@@ -29,7 +30,7 @@ export class PluginLifecycleAPI {
     // 退出插件
     ipcMain.handle('out-plugin', (event, isKill: boolean = false) => {
       console.log('[PluginLifecycle] out-plugin', isKill)
-      const pluginInfo = this.pluginManager.getPluginInfoByWebContents(event.sender)
+      const pluginInfo = this.pluginManager?.getPluginInfoByWebContents(event.sender)
       console.log('[PluginLifecycle] pluginInfo', pluginInfo)
       if (!pluginInfo) {
         return false
@@ -38,13 +39,13 @@ export class PluginLifecycleAPI {
       // 发送插件退出事件（isKill=false 表示正常退出）
       event.sender.send('plugin-out', false)
 
-      this.pluginManager.hidePluginView()
+      this.pluginManager?.hidePluginView()
       windowManager.notifyBackToSearch()
       // 主窗口获取焦点（确保前端的 focus() 调用能生效）
       this.mainWindow?.webContents.focus()
 
       if (isKill) {
-        return this.pluginManager.killPlugin(pluginInfo.path)
+        return this.pluginManager?.killPlugin(pluginInfo.path)
       } else {
         return true
       }
