@@ -8,16 +8,17 @@ if (!electron.ipcRenderer.sendTo) {
   }
 }
 
-const enterCallbacks = []
-const clipboardChangeCallbacks = []
-const subInputChangeCallbacks = []
-const pluginOutCallbacks = []
-const pluginDetachCallbacks = []
-const mainPushCallbacks = []
-const hotkeyRecordedCallbacks = []
-const windowMaterialChangeCallbacks = []
-const logEntriesCallbacks = []
-const foundInPageCallbacks = []
+// 事件监听采用单回调模式：重复注册会替换之前的回调，避免插件热重载时累积多个监听器
+let enterCallback = null
+let clipboardChangeCallback = null
+let subInputChangeCallback = null
+let pluginOutCallback = null
+let pluginDetachCallback = null
+let mainPushCallback = null // { callback, selectCallback }
+let hotkeyRecordedCallback = null
+let windowMaterialChangeCallback = null
+let logEntriesCallback = null
+let foundInPageCallback = null
 
 // 获取操作系统类型
 const osType = electron.ipcRenderer.sendSync('get-os-type')
@@ -47,13 +48,12 @@ window.ztools = {
   // 监听页面查找结果
   onFindInPageResult: (callback) => {
     if (callback && typeof callback === 'function') {
-      foundInPageCallbacks.push(callback)
+      foundInPageCallback = callback
     }
   },
   // 取消监听页面查找结果
   offFindInPageResult: (callback) => {
-    const index = foundInPageCallbacks.indexOf(callback)
-    if (index > -1) foundInPageCallbacks.splice(index, 1)
+    if (foundInPageCallback === callback) foundInPageCallback = null
   },
   // 模拟键盘按键
   simulateKeyboardTap: (key, ...modifiers) => {
@@ -62,33 +62,33 @@ window.ztools = {
   },
   onPluginEnter: async (callback) => {
     console.log('插件请求onPluginEnter')
-    enterCallbacks.push(callback)
+    enterCallback = callback
   },
   // 插件退出事件
   onPluginOut: async (callback) => {
     console.log('插件请求onPluginOut')
     if (callback && typeof callback === 'function') {
-      pluginOutCallbacks.push(callback)
+      pluginOutCallback = callback
     }
   },
   // 插件分离事件
   onPluginDetach: async (callback) => {
     console.log('插件请求onPluginDetach')
     if (callback && typeof callback === 'function') {
-      pluginDetachCallbacks.push(callback)
+      pluginDetachCallback = callback
     }
   },
   // 监听主搜索推送（mainPush 功能）
   onMainPush: (callback, selectCallback) => {
     console.log('插件注册 onMainPush')
     if (callback && typeof callback === 'function') {
-      mainPushCallbacks.push({ callback, selectCallback })
+      mainPushCallback = { callback, selectCallback }
     }
   },
   // 兼容旧api
   onPluginReady: async (callback) => {
     console.log('插件请求onPluginReady')
-    enterCallbacks.push(callback)
+    enterCallback = callback
   },
   // 显示系统通知
   showNotification: async (body) => {
@@ -101,9 +101,9 @@ window.ztools = {
   // 设置子输入框 (插件模式下的搜索框)
   setSubInput: async (onChange, placeholder, isFocus = true) => {
     console.log('插件设置子输入框:', { placeholder, isFocus })
-    // 保存回调
+    // 保存回调（替换之前的）
     if (onChange && typeof onChange === 'function') {
-      subInputChangeCallbacks.push(onChange)
+      subInputChangeCallback = onChange
     }
     // 通知主进程更新 placeholder，并传递 isFocus 参数
     return await electron.ipcRenderer.invoke('set-sub-input', placeholder, isFocus)
@@ -193,7 +193,7 @@ window.ztools = {
       await electron.ipcRenderer.invoke('clipboard:update-config', config),
     // 监听剪贴板变化事件
     onChange: async (callback) => {
-      clipboardChangeCallbacks.push(callback)
+      clipboardChangeCallback = callback
     }
   },
   // 复制文本到剪贴板
@@ -505,7 +505,7 @@ window.ztools = {
     getCurrentShortcut: async () => await electron.ipcRenderer.invoke('get-current-shortcut'),
     onHotkeyRecorded: (callback) => {
       if (callback && typeof callback === 'function') {
-        hotkeyRecordedCallbacks.push(callback)
+        hotkeyRecordedCallback = callback
       }
     },
 
@@ -592,7 +592,7 @@ window.ztools = {
 
     // 监听窗口材质更新
     onUpdateWindowMaterial: (callback) => {
-      windowMaterialChangeCallbacks.push(callback)
+      windowMaterialChangeCallback = callback
     },
 
     // ==================== 应用更新 API ====================
@@ -681,51 +681,50 @@ window.ztools = {
     logSubscribe: async () => await electron.ipcRenderer.invoke('internal:log-subscribe'),
     onLogEntries: (callback) => {
       if (callback && typeof callback === 'function') {
-        logEntriesCallbacks.push(callback)
+        logEntriesCallback = callback
       }
     },
     offLogEntries: (callback) => {
-      const index = logEntriesCallbacks.indexOf(callback)
-      if (index > -1) logEntriesCallbacks.splice(index, 1)
+      if (logEntriesCallback === callback) logEntriesCallback = null
     }
   }
 }
 
 electron.ipcRenderer.on('on-plugin-enter', (event, launchParam) => {
   console.log('插件进入参数:', launchParam)
-  enterCallbacks.forEach((cb) => cb(launchParam))
+  if (enterCallback) enterCallback(launchParam)
 })
 
 // 监听插件退出事件
 electron.ipcRenderer.on('plugin-out', (event, isKill) => {
   console.log('插件退出事件:', isKill)
-  pluginOutCallbacks.forEach((cb) => cb(isKill))
+  if (pluginOutCallback) pluginOutCallback(isKill)
 })
 
 // 监听插件分离事件
 electron.ipcRenderer.on('plugin-detach', () => {
   console.log('插件分离事件')
-  pluginDetachCallbacks.forEach((cb) => cb())
+  if (pluginDetachCallback) pluginDetachCallback()
 })
 
 electron.ipcRenderer.on('clipboard-change', (event, item) => {
   console.log('剪贴板变化:', item)
-  clipboardChangeCallbacks.forEach((cb) => cb(item))
+  if (clipboardChangeCallback) clipboardChangeCallback(item)
 })
 
 // 监听子输入框变化事件
 electron.ipcRenderer.on('sub-input-change', (event, details) => {
   console.log('子输入框变化:', details)
-  subInputChangeCallbacks.forEach((cb) => cb(details))
+  if (subInputChangeCallback) subInputChangeCallback(details)
 })
 
 // 监听 mainPush 查询请求（搜索时主进程转发）
 electron.ipcRenderer.on('main-push-query', (event, { queryData, callId }) => {
   try {
     let allResults = []
-    for (const { callback } of mainPushCallbacks) {
+    if (mainPushCallback) {
       try {
-        const results = callback(queryData)
+        const results = mainPushCallback.callback(queryData)
         if (Array.isArray(results) && results.length > 0) {
           allResults = allResults.concat(results)
         }
@@ -749,16 +748,14 @@ electron.ipcRenderer.on('main-push-query', (event, { queryData, callId }) => {
 electron.ipcRenderer.on('main-push-select', (event, { selectData, callId }) => {
   try {
     let shouldEnterPlugin = false
-    for (const { selectCallback } of mainPushCallbacks) {
-      if (selectCallback && typeof selectCallback === 'function') {
-        try {
-          const result = selectCallback(selectData)
-          if (result === true) {
-            shouldEnterPlugin = true
-          }
-        } catch (e) {
-          console.error('mainPush selectCallback error:', e)
+    if (mainPushCallback && mainPushCallback.selectCallback && typeof mainPushCallback.selectCallback === 'function') {
+      try {
+        const result = mainPushCallback.selectCallback(selectData)
+        if (result === true) {
+          shouldEnterPlugin = true
         }
+      } catch (e) {
+        console.error('mainPush selectCallback error:', e)
       }
     }
     electron.ipcRenderer.send(`main-push-select-result-${callId}`, {
@@ -776,7 +773,7 @@ electron.ipcRenderer.on('main-push-select', (event, { selectData, callId }) => {
 // 监听快捷键录制事件
 electron.ipcRenderer.on('hotkey-recorded', (event, shortcut) => {
   console.log('收到快捷键录制事件:', shortcut)
-  hotkeyRecordedCallbacks.forEach((cb) => cb(shortcut))
+  if (hotkeyRecordedCallback) hotkeyRecordedCallback(shortcut)
 })
 
 // 监听主进程的插件方法调用请求（用于无界面插件）
@@ -858,15 +855,15 @@ electron.ipcRenderer.on('get-plugin-mode', (event, { featureCode, callId }) => {
 
 // 监听主进程发送的窗口材质更新事件
 electron.ipcRenderer.on('update-window-material', (event, material) => {
-  windowMaterialChangeCallbacks.forEach((cb) => cb(material))
+  if (windowMaterialChangeCallback) windowMaterialChangeCallback(material)
 })
 
 // 监听主进程推送的调试日志
 electron.ipcRenderer.on('log-entries', (event, entries) => {
-  logEntriesCallbacks.forEach((cb) => cb(entries))
+  if (logEntriesCallback) logEntriesCallback(entries)
 })
 
 // 监听页面内查找结果
 electron.ipcRenderer.on('found-in-page-result', (event, result) => {
-  foundInPageCallbacks.forEach((cb) => cb(result))
+  if (foundInPageCallback) foundInPageCallback(result)
 })
