@@ -148,12 +148,43 @@ function handleComposing(composing: boolean): void {
 
 // 关闭插件，返回搜索页（胶囊标签关闭按钮）
 function handleClosePlugin(): void {
-  currentView.value = ViewMode.Search
-  searchQuery.value = ''
-  window.ztools.hidePlugin()
+  exitPluginToSearch()
   nextTick(() => {
     searchBoxRef.value?.focus()
   })
+}
+
+/**
+ * 退出当前插件并返回搜索视图（主窗口）
+ */
+function exitPluginToSearch(): void {
+  currentView.value = ViewMode.Search
+  searchQuery.value = ''
+  window.ztools.hidePlugin()
+  console.log('[PluginExit] 已退出插件并返回搜索视图')
+}
+
+/**
+ * 处理插件模式下的分步退出逻辑：清空输入 -> 清理粘贴态 -> 退出插件
+ */
+function handlePluginStepExit(): void {
+  if (searchQuery.value.trim()) {
+    // 主窗口插件模式：优先清空子输入框并通知插件
+    searchQuery.value = ''
+    window.ztools.notifySubInputChange('')
+    return
+  }
+
+  if (pastedImageData.value || pastedFilesData.value || pastedTextData.value) {
+    // 与现有 ESC 逻辑一致：第二步清理粘贴态
+    pastedImageData.value = null
+    pastedFilesData.value = null
+    pastedTextData.value = null
+    return
+  }
+
+  // 第三步：退出插件返回搜索
+  exitPluginToSearch()
 }
 
 // 将浏览器 KeyboardEvent 转换为 Electron KeyboardInputEvent 格式
@@ -365,27 +396,44 @@ async function handleKeydown(event: KeyboardEvent): Promise<void> {
     }
   }
 
+  // 是否为不带修饰键的裸 Backspace
+  const isPlainBackspace =
+    event.key === 'Backspace' &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.shiftKey
+
+  // 事件目标是否为主窗口搜索输入框（子输入框）
+  const isSearchInputTarget =
+    event.target instanceof HTMLInputElement && event.target.classList.contains('search-input')
+
+  if (
+    isPlainBackspace &&
+    currentView.value === ViewMode.Plugin &&
+    windowStore.subInputVisible &&
+    isSearchInputTarget &&
+    !searchQuery.value.trim()
+  ) {
+    // SearchBox 可能已拦截 Backspace（如清理粘贴态），避免重复处理
+    if (event.defaultPrevented) {
+      console.log('[PluginExit] Backspace 跳过处理：事件已被其他逻辑消费')
+      return
+    }
+
+    event.preventDefault()
+    console.log('[PluginExit] Backspace 命中条件：空输入 Backspace，进入分步退出逻辑')
+    handlePluginStepExit()
+    return
+  }
+
   // Escape 键特殊处理
   if (event.key === 'Escape') {
     event.preventDefault()
 
     if (currentView.value === ViewMode.Plugin) {
-      // 插件页面 ESC 键处理 - 分步清除
-      if (searchQuery.value.trim()) {
-        // 第一步：清除输入框
-        searchQuery.value = ''
-        // 通知插件输入已清空
-        window.ztools.notifySubInputChange('')
-      } else if (pastedImageData.value || pastedFilesData.value || pastedTextData.value) {
-        // 第二步：清除粘贴内容
-        pastedImageData.value = null
-        pastedFilesData.value = null
-        pastedTextData.value = null
-      } else {
-        // 第三步：退出插件返回搜索
-        currentView.value = ViewMode.Search
-        window.ztools.hidePlugin()
-      }
+      console.log('[PluginExit] ESC 触发分步退出逻辑')
+      handlePluginStepExit()
       return
     }
 
