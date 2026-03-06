@@ -9,6 +9,7 @@ import api from './api/index'
 import appWatcher from './appWatcher'
 import detachedWindowManager from './core/detachedWindowManager'
 import floatingBallManager from './core/floatingBallManager'
+import httpServer from './core/httpServer'
 import { loadInternalPlugins } from './core/internalPluginLoader'
 
 import crypto from 'crypto'
@@ -255,6 +256,8 @@ app.on('will-quit', () => {
   appWatcher.stop()
   // 清理悬浮球
   floatingBallManager.cleanup()
+  // 关闭 HTTP 服务器
+  httpServer.stop()
 })
 
 app.on('before-quit', (event) => {
