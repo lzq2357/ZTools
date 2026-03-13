@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { useToast, AdaptiveIcon } from '@/components'
 import { weightedSearch } from '@/utils'
 import { useJumpFunction, useZtoolsSubInput } from '@/composables'
+import { LocalLaunchSettingJumpFunction } from '@/views/LocalLaunchSetting/LocalLaunchSetting'
 
 const emit = defineEmits<{
   'pending-files-consumed': []
@@ -271,7 +272,7 @@ function getTypeLabel(type: string): string {
 }
 
 // 处理对应 ztools code 进来的功能
-useJumpFunction((state) => {
+useJumpFunction<LocalLaunchSettingJumpFunction>((state) => {
   if (state.pendingFiles && state.pendingFiles.length > 0) {
     consumePendingFiles(state.pendingFiles)
   }
