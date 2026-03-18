@@ -20,11 +20,11 @@ jobs:
           # macOS x64 (Intel)
           - os: macos-13
             arch: x64
-            build_cmd: pnpm build && electron-builder --mac --x64
+            build_cmd: pnpm run build:mac:x64
           # macOS ARM64 (Apple Silicon)
           - os: macos-14
             arch: arm64
-            build_cmd: pnpm build && electron-builder --mac --arm64
+            build_cmd: pnpm run build:mac:arm64
           # Windows x64
           - os: windows-latest
             arch: x64
