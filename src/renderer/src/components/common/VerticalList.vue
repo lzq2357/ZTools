@@ -14,7 +14,15 @@
       <div class="item-content">
         <!-- eslint-disable-next-line vue/no-v-html -->
         <div class="item-title" v-html="getHighlightedName(app)"></div>
-        <div v-if="app.pluginExplain" class="item-subtitle">{{ app.pluginExplain }}</div>
+        <div v-if="app.pluginExplain" class="item-subtitle">
+          {{ app.pluginExplain }}
+        </div>
+        <div
+          v-else-if="app.type === 'direct' && app.subType === 'app' && app.path"
+          class="item-subtitle"
+        >
+          {{ app.path }}
+        </div>
       </div>
       <div v-if="app.type === 'plugin'" class="item-badge">
         {{ app.pluginName || 'Ctool' }}
