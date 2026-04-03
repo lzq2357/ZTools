@@ -285,8 +285,9 @@ class WindowManager {
       } else if (pluginManager.getCurrentPluginPath() !== null) {
         // 如果有插件在显示（且上次不是主窗口），聚焦插件
         pluginManager.focusPluginView()
-        // 修复部分 Windows 系统窗口隐藏再显示后插件白屏
-        pluginManager.forceRepaintCurrentView()
+        // 修复部分 Windows 系统窗口隐藏再显示后插件白屏：
+        // 延迟到下一 tick 执行，避免与窗口 show 动画在同一 vsync 合并导致重绘失效
+        setImmediate(() => pluginManager.forceRepaintCurrentView())
       }
 
       // 恢复完成，清除标志位

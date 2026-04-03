@@ -291,21 +291,17 @@ export class AppsAPI {
     if (!this.pluginManager) {
       return { success: false, error: 'Plugin Manager 未初始化' }
     }
-
     const { path: appPath, featureCode, name } = options
-
+    const plugin = this.getPluginsFromDB().find((p: any) => p.path === appPath)
+    const effectiveName = plugin?.name
     // 检查是否配置为自动分离
     let shouldAutoDetach = false
-    if (pluginConfig) {
+    if (pluginConfig && effectiveName) {
       try {
-        const autoDetachPlugins = databaseAPI.dbGet('autoDetachPlugin')
-        if (
-          autoDetachPlugins &&
-          Array.isArray(autoDetachPlugins) &&
-          autoDetachPlugins.includes(pluginConfig.name)
-        ) {
+        const autoDetachPlugins: string[] = databaseAPI.dbGet('autoDetachPlugin') || []
+        if (Array.isArray(autoDetachPlugins) && autoDetachPlugins.includes(effectiveName)) {
           shouldAutoDetach = true
-          console.log(`插件 ${pluginConfig.name} 配置为自动分离，直接在独立窗口中创建`)
+          console.log(`插件 ${effectiveName} 配置为自动分离，直接在独立窗口中创建`)
         }
       } catch (error) {
         console.error('[Commands] 检查自动分离配置失败:', error)
@@ -461,8 +457,6 @@ export class AppsAPI {
             param
           )
         }
-
-        // 普通插件：创建插件视图编排逻辑
         return await this.preparePluginLaunch(
           {
             path: appPath,
@@ -626,7 +620,7 @@ export class AppsAPI {
 
             // 如果在 plugin.json 中没找到，尝试从动态 features 中查找
             if (!feature) {
-              const dynamicFeatures = pluginFeatureAPI.loadDynamicFeatures(pluginConfig.name)
+              const dynamicFeatures = pluginFeatureAPI.loadDynamicFeatures(plugin.name)
               feature = dynamicFeatures.find((f: any) => f.code === featureCode)
             }
 
@@ -644,9 +638,9 @@ export class AppsAPI {
               icon: featureIcon,
               type: 'plugin',
               featureCode: featureCode,
-              pluginName: pluginConfig.name, // ✅ 添加插件名称
+              pluginName: plugin.name, // 有效名（开发版含 __dev 后缀）
               pluginExplain: feature?.explain || '',
-              cmdType: cmdType || 'text' // ✅ 添加 cmdType
+              cmdType: cmdType || 'text'
             }
           } catch (error) {
             console.error('[Commands] 读取插件配置失败:', error)
@@ -711,7 +705,13 @@ export class AppsAPI {
       const history: any[] = databaseAPI.dbGet('command-history') || []
 
       // 查找是否已存在（非插件类型需要同时匹配 name 和 path，支持同路径不同名应用）
-      const existingIndex = findCommandIndex(history, appPath, type, featureCode, appInfo.name)
+      const existingIndex = findCommandIndex(
+        history,
+        appPath,
+        type,
+        featureCode,
+        appInfo.pluginName || appInfo.name
+      )
 
       if (existingIndex >= 0) {
         // 已存在，更新使用时间和次数
@@ -720,6 +720,8 @@ export class AppsAPI {
         // 更新可能变化的信息
         history[existingIndex].name = appInfo.name
         history[existingIndex].icon = appInfo.icon
+        history[existingIndex].pluginName = appInfo.pluginName
+        history[existingIndex].pluginExplain = appInfo.pluginExplain
       } else {
         // 新记录
         history.push({
@@ -866,7 +868,6 @@ export class AppsAPI {
     try {
       const originalHistory: any[] = databaseAPI.dbGet('command-history') || []
 
-      // 过滤掉要删除的项（非插件类型需要同时匹配 name 和 path，支持同路径不同名应用）
       const history = filterOutCommand(originalHistory, appPath, featureCode, name)
 
       databaseAPI.dbPut('command-history', history)
@@ -887,7 +888,7 @@ export class AppsAPI {
       const pinnedApps: any[] = databaseAPI.dbGet('pinned-commands') || []
 
       // 检查是否已固定（非插件类型需要同时匹配 name 和 path，支持同路径不同名应用）
-      const exists = hasCommand(pinnedApps, app.path, app.featureCode, app.name)
+      const exists = hasCommand(pinnedApps, app.path, app.featureCode, app.pluginName || app.name)
 
       if (exists) {
         console.log('[Commands] 应用已固定:', app.path)
@@ -924,7 +925,6 @@ export class AppsAPI {
     try {
       const originalPinnedApps: any[] = databaseAPI.dbGet('pinned-commands') || []
 
-      // 过滤掉要删除的项（非插件类型需要同时匹配 name 和 path，支持同路径不同名应用）
       const pinnedApps = filterOutCommand(originalPinnedApps, appPath, featureCode, name)
 
       databaseAPI.dbPut('pinned-commands', pinnedApps)
@@ -951,7 +951,8 @@ export class AppsAPI {
         featureCode: app.featureCode,
         pluginExplain: app.pluginExplain,
         pinyin: app.pinyin,
-        pinyinAbbr: app.pinyinAbbr
+        pinyinAbbr: app.pinyinAbbr,
+        pluginName: app.pluginName
       }))
 
       databaseAPI.dbPut('pinned-commands', cleanData)
@@ -1074,7 +1075,7 @@ export class AppsAPI {
         console.error('[Commands] 获取本地启动项失败:', error)
       }
 
-      // 处理插件指令
+      // 处理插件指令。
       for (const plugin of plugins) {
         if (!plugin.features || !Array.isArray(plugin.features)) {
           continue

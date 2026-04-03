@@ -107,12 +107,19 @@ interface SearchResultScoreMeta {
 
 // MainPush 功能信息
 export interface MainPushFeature {
+  /** 提供该 mainPush 功能的插件路径。 */
   pluginPath: string
+  /** 提供该 mainPush 功能的插件名称。 */
   pluginName: string
+  /** 插件 Logo。 */
   pluginLogo: string
+  /** 功能编码。 */
   featureCode: string
+  /** 功能说明。 */
   featureExplain: string
+  /** 功能图标。 */
   featureIcon?: string
+  /** 当前功能声明的 cmd 列表。 */
   cmds: any[]
 }
 
@@ -202,6 +209,9 @@ export const useCommandDataStore = defineStore('commandData', () => {
   // 超级面板固定列表缓存
   const superPanelPinned = ref<any[]>([])
 
+  /**
+   * 从宿主同步超级面板固定列表缓存。
+   */
   async function loadSuperPanelPinnedData(): Promise<void> {
     try {
       superPanelPinned.value = await window.ztools.getSuperPanelPinned()
@@ -210,6 +220,9 @@ export const useCommandDataStore = defineStore('commandData', () => {
     }
   }
 
+  /**
+   * 判断某个指令是否已固定到超级面板。
+   */
   function isPinnedToSuperPanel(app: any): boolean {
     return superPanelPinned.value.some((item) => {
       if (app.featureCode) {
@@ -223,6 +236,48 @@ export const useCommandDataStore = defineStore('commandData', () => {
   // 格式: pluginName:featureCode:cmdName:cmdType
   function getCommandId(cmd: Command): string {
     return _getCommandId(cmd)
+  }
+
+  /**
+   * 基于当前指令列表，找到与历史记录或固定项对应的最新指令快照。
+   *
+   * 对插件指令（有 featureCode）采用两阶段匹配：
+   * 1. 精确匹配（含名称）——使别名指令项被正确识别，历史/固定列表中显示的是别名而非原始名称；
+   * 2. 宽松匹配（忽略名称）——别名已删除或指令被重命名时，降级展示原始指令，避免数据丢失。
+   *
+   * 对非插件指令按「名称 + type + subType + featureCode」精确匹配。
+   */
+  function findCurrentCommandMatch(storedCommand: Command): Command | undefined {
+    // 非插件类型：直接按名称 + 类型精确匹配
+    if (storedCommand.type !== 'plugin' || !storedCommand.featureCode) {
+      return commands.value.find(
+        (cmd) =>
+          cmd.name === storedCommand.name &&
+          cmd.type === storedCommand.type &&
+          cmd.subType === storedCommand.subType &&
+          cmd.featureCode === storedCommand.featureCode
+      )
+    }
+
+    // 插件类型：pluginName 已是全局唯一标识（开发版含 __dev 后缀）
+    const isSamePlugin = (cmd: Command): boolean => {
+      if (cmd.pluginName && storedCommand.pluginName) {
+        return cmd.pluginName === storedCommand.pluginName
+      }
+      return cmd.path === storedCommand.path
+    }
+
+    const isPluginMatch = (cmd: Command): boolean =>
+      cmd.type === 'plugin' && cmd.featureCode === storedCommand.featureCode && isSamePlugin(cmd)
+
+    // 阶段 1：精确匹配（含名称），使别名指令项被正确识别
+    const nameMatch = commands.value.find(
+      (cmd) => isPluginMatch(cmd) && cmd.name === storedCommand.name
+    )
+    if (nameMatch) return nameMatch
+
+    // 阶段 2：宽松匹配（忽略名称），别名已删除或指令重命名时降级展示原始指令
+    return commands.value.find(isPluginMatch)
   }
 
   async function loadCommandAliases(): Promise<CommandAliasStore> {
@@ -646,7 +701,7 @@ export const useCommandDataStore = defineStore('commandData', () => {
                       .toLowerCase()
                   })
                 } else {
-                  // 功能指令（文本类型）：展开为原指令 + 每个别名周独立指令
+                  // 功能指令（文本类型）：展开为原指令 + 每个别名各自独立指令
                   pluginItems.push(
                     ...expandPluginTextCommandAliases(
                       {
@@ -1130,28 +1185,15 @@ export const useCommandDataStore = defineStore('commandData', () => {
   // 获取最近使用（自动同步最新数据）
   function getRecentCommands(limit?: number): Command[] {
     // 同步历史记录数据，确保使用最新的路径和图标
-    const syncedHistory = history.value
-      .map((historyItem) => {
-        // 尝试从当前列表中找到
-        const currentCommand = commands.value.find(
-          (app) =>
-            app.name === historyItem.name &&
-            app.type === historyItem.type &&
-            app.subType === historyItem.subType &&
-            app.featureCode === historyItem.featureCode
-        )
+    const syncedHistory = history.value.map((historyItem) => {
+      const currentCommand = findCurrentCommandMatch(historyItem)
 
-        // 如果找不到最新数据，说明命令已不可用（如插件被禁用），直接过滤掉
-        if (!currentCommand && historyItem.type === 'plugin') {
-          return null
-        }
+      // 如果找到了最新数据，使用最新的；否则使用历史记录
+      const command = currentCommand || historyItem
 
-        const command = currentCommand || historyItem
-
-        // 应用特殊指令配置（统一处理）
-        return applySpecialConfig(command)
-      })
-      .filter((item): item is Command => item !== null)
+      // 应用特殊指令配置（统一处理）
+      return applySpecialConfig(command)
+    })
 
     if (limit) {
       return syncedHistory.slice(0, limit)
@@ -1159,7 +1201,9 @@ export const useCommandDataStore = defineStore('commandData', () => {
     return syncedHistory
   }
 
-  // 从历史记录中删除指定指令（通过后端 API）
+  /**
+   * 从历史记录中删除指定指令。
+   */
   async function removeFromHistory(
     commandPath: string,
     featureCode?: string,
@@ -1180,7 +1224,8 @@ export const useCommandDataStore = defineStore('commandData', () => {
         icon: cmd.icon,
         type: cmd.type,
         featureCode: cmd.featureCode, // 保存 featureCode
-        pluginExplain: cmd.pluginExplain // 保存插件说明
+        pluginExplain: cmd.pluginExplain, // 保存插件说明
+        pluginName: cmd.pluginName
       }))
 
       await window.ztools.dbPut(PINNED_DOC_ID, cleanData)
@@ -1189,12 +1234,19 @@ export const useCommandDataStore = defineStore('commandData', () => {
     }
   }
 
-  // 检查指令是否已固定（非插件类型需要同时匹配 name 和 path，支持同路径不同名应用）
+  /**
+   * 检查指令是否已固定。
+   */
   function isPinned(commandPath: string, featureCode?: string, name?: string): boolean {
     return pinnedCommands.value.some((cmd) => {
       // 对于插件，需要同时匹配 path 和 featureCode
       if (cmd.type === 'plugin' && featureCode !== undefined) {
-        return cmd.path === commandPath && cmd.featureCode === featureCode
+        if (cmd.featureCode !== featureCode) {
+          return false
+        }
+        const matchesPath = cmd.path === commandPath
+        const matchesPluginName = Boolean(name && cmd.pluginName === name)
+        return matchesPath || matchesPluginName
       }
       // 非插件类型：同时匹配 name 和 path
       if (name) {
@@ -1212,7 +1264,9 @@ export const useCommandDataStore = defineStore('commandData', () => {
     // 后端会发送 pinned-changed 事件，触发重新加载
   }
 
-  // 取消固定
+  /**
+   * 取消固定指定指令。
+   */
   async function unpinCommand(
     commandPath: string,
     featureCode?: string,
@@ -1227,14 +1281,7 @@ export const useCommandDataStore = defineStore('commandData', () => {
     // 同步固定列表的数据，确保使用最新的路径和图标
     return pinnedCommands.value
       .map((pinnedItem) => {
-        // 尝试从当前列表中找到
-        const currentCommand = commands.value.find(
-          (cmd) =>
-            cmd.name === pinnedItem.name &&
-            cmd.type === pinnedItem.type &&
-            cmd.subType === pinnedItem.subType &&
-            cmd.featureCode === pinnedItem.featureCode
-        )
+        const currentCommand = findCurrentCommandMatch(pinnedItem)
 
         // 如果插件当前不可用（如被禁用），则不展示
         if (!currentCommand && pinnedItem.type === 'plugin') {

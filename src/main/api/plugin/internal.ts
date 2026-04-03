@@ -75,6 +75,13 @@ async function exportPluginDocsToDir(pluginName: string, targetDir: string): Pro
 }
 
 /**
+ * 生成导出目录名（直接使用 pluginName，__dev 后缀已表明开发版）。
+ */
+function getPluginExportFolderName(pluginName: string): string {
+  return pluginName
+}
+
+/**
  * 检查是否为内置插件调用
  * @param pluginManager 插件管理器实例
  * @param event IPC 事件对象
@@ -102,15 +109,23 @@ export function requireInternalPlugin(
  * 采用转发策略：将内置插件的 API 调用转发到已有的 renderer API
  */
 export class InternalPluginAPI {
+  /** 当前用于鉴权和插件查询的插件管理器。 */
   private pluginManager: PluginManager | null = null
+  /** 当前主窗口实例，供部分内部能力复用。 */
   private mainWindow: Electron.BrowserWindow | null = null
 
+  /**
+   * 初始化内置插件专用 API，并注册对应的 IPC 通道。
+   */
   public init(mainWindow: Electron.BrowserWindow, pluginManager: PluginManager): void {
     this.mainWindow = mainWindow
     this.pluginManager = pluginManager
     this.setupIPC()
   }
 
+  /**
+   * 注册仅允许内置插件访问的 IPC 能力。
+   */
   private setupIPC(): void {
     // ==================== 数据库 API (ZTOOLS/ 命名空间) ====================
     ipcMain.handle('internal:db-put', (event, key: string, value: any) => {
@@ -277,6 +292,82 @@ export class InternalPluginAPI {
       return await (pluginsAPI as any).importDevPlugin(pluginJsonPath)
     })
 
+    ipcMain.handle(
+      'internal:upsert-dev-project-by-config-path',
+      async (event, pluginJsonPath: string) => {
+        if (!requireInternalPlugin(this.pluginManager, event)) {
+          throw new PermissionDeniedError('internal:upsert-dev-project-by-config-path')
+        }
+        return await (pluginsAPI as any).upsertDevProjectByConfigPath(pluginJsonPath)
+      }
+    )
+
+    ipcMain.handle('internal:get-dev-projects', async (event) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:get-dev-projects')
+      }
+      return await (pluginsAPI as any).getDevProjects()
+    })
+
+    ipcMain.handle('internal:update-dev-projects-order', async (event, pluginNames: string[]) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:update-dev-projects-order')
+      }
+      return await (pluginsAPI as any).updateDevProjectsOrder(pluginNames)
+    })
+
+    ipcMain.handle('internal:remove-dev-project', async (event, pluginName: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:remove-dev-project')
+      }
+      return await (pluginsAPI as any).removeDevProject(pluginName)
+    })
+
+    ipcMain.handle('internal:install-dev-plugin', async (event, pluginPath: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:install-dev-plugin')
+      }
+      return await (pluginsAPI as any).installDevPlugin(pluginPath)
+    })
+
+    ipcMain.handle('internal:uninstall-dev-plugin', async (event, pluginPath: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:uninstall-dev-plugin')
+      }
+      return await (pluginsAPI as any).uninstallDevPlugin(pluginPath)
+    })
+
+    ipcMain.handle('internal:validate-dev-project', async (event, pluginName: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:validate-dev-project')
+      }
+      return await (pluginsAPI as any).validateDevProject(pluginName)
+    })
+
+    ipcMain.handle('internal:reload-dev-project', async (event, pluginName: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:reload-dev-project')
+      }
+      return await (pluginsAPI as any).reloadDevProject(pluginName)
+    })
+
+    ipcMain.handle(
+      'internal:select-dev-project-config',
+      async (event, pluginName: string, configPath?: string) => {
+        if (!requireInternalPlugin(this.pluginManager, event)) {
+          throw new PermissionDeniedError('internal:select-dev-project-config')
+        }
+        return await (pluginsAPI as any).selectDevProjectConfig(pluginName, configPath)
+      }
+    )
+
+    ipcMain.handle('internal:package-dev-project', async (event, pluginName: string) => {
+      if (!requireInternalPlugin(this.pluginManager, event)) {
+        throw new PermissionDeniedError('internal:package-dev-project')
+      }
+      return await (pluginsAPI as any).packageDevProject(pluginName)
+    })
+
     ipcMain.handle('internal:delete-plugin', async (event, pluginPath: string) => {
       if (!requireInternalPlugin(this.pluginManager, event)) {
         throw new PermissionDeniedError('internal:delete-plugin')
@@ -377,7 +468,7 @@ export class InternalPluginAPI {
       try {
         const ts = formatTimestamp(new Date())
         const downloadsDir = app.getPath('downloads')
-        const safePluginName = pluginName.replace(/[/\\:*?"<>|]/g, '_')
+        const safePluginName = getPluginExportFolderName(pluginName).replace(/[/\\:*?"<>|]/g, '_')
         const exportDir = path.join(downloadsDir, `${safePluginName}-${ts}`)
         await fs.promises.mkdir(exportDir, { recursive: true })
         await exportPluginDocsToDir(pluginName, exportDir)
@@ -398,7 +489,9 @@ export class InternalPluginAPI {
         if (!statsResult.success) {
           return { success: false, error: statsResult.error || '获取数据列表失败' }
         }
-        const plugins: Array<{ pluginName: string }> = statsResult.data || []
+        const plugins: Array<{
+          pluginName: string
+        }> = statsResult.data || []
 
         const ts = formatTimestamp(new Date())
         const downloadsDir = app.getPath('downloads')
@@ -406,7 +499,10 @@ export class InternalPluginAPI {
         await fs.promises.mkdir(rootDir, { recursive: true })
 
         for (const plugin of plugins) {
-          const safePluginName = plugin.pluginName.replace(/[/\\:*?"<>|]/g, '_')
+          const safePluginName = getPluginExportFolderName(plugin.pluginName).replace(
+            /[/\\:*?"<>|]/g,
+            '_'
+          )
           const pluginDir = path.join(rootDir, safePluginName)
           await fs.promises.mkdir(pluginDir, { recursive: true })
           await exportPluginDocsToDir(plugin.pluginName, pluginDir)
