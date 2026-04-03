@@ -377,17 +377,22 @@ class WindowManager {
     // 创建右键菜单
     this.createTrayMenu()
 
-    // 左键点击：切换窗口显示
-    this.tray.on('click', () => {
-      this.toggleWindow()
-    })
+    if (platform.isLinux && this.trayMenu) {
+      // Linux 下往往无法触发 click 事件，直接使用原生菜单
+      this.tray.setContextMenu(this.trayMenu)
+    } else {
+      // 左键点击：切换窗口显示
+      this.tray.on('click', () => {
+        this.toggleWindow()
+      })
 
-    // 右键点击：显示菜单
-    this.tray.on('right-click', () => {
-      if (this.tray && this.trayMenu) {
-        this.tray.popUpContextMenu(this.trayMenu)
-      }
-    })
+      // 右键点击：显示菜单
+      this.tray.on('right-click', () => {
+        if (this.tray && this.trayMenu) {
+          this.tray.popUpContextMenu(this.trayMenu)
+        }
+      })
+    }
   }
 
   /**
