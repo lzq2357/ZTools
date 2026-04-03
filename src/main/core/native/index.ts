@@ -286,6 +286,10 @@ export class WindowManager {
    * - Windows: { app, pid }
    */
   static getActiveWindow(): { app: string; bundleId?: string; pid?: number } | null {
+    if (platform === 'linux') {
+      return null
+    }
+
     const result = (addon as NativeAddon).getActiveWindow()
     if (!result || result.error) {
       return null
@@ -301,6 +305,10 @@ export class WindowManager {
    * @returns 是否激活成功
    */
   static activateWindow(identifier: string | number): boolean {
+    if (platform === 'linux') {
+      return false
+    }
+
     if (platform === 'darwin') {
       // macOS: bundleId 是字符串
       if (typeof identifier !== 'string') {
@@ -328,6 +336,9 @@ export class WindowManager {
    * @returns {boolean} 是否成功
    */
   static simulatePaste(): boolean {
+    if (platform === 'linux') {
+      return false
+    }
     return (addon as NativeAddon).simulatePaste()
   }
 
@@ -350,6 +361,10 @@ export class WindowManager {
    * WindowManager.simulateKeyboardTap('s', 'meta', 'shift');
    */
   static simulateKeyboardTap(key: string, ...modifiers: string[]): boolean {
+    if (platform === 'linux') {
+      return false
+    }
+
     if (typeof key !== 'string' || !key) {
       throw new TypeError('key must be a non-empty string')
     }
@@ -362,6 +377,9 @@ export class WindowManager {
    * @returns {boolean} 是否成功
    */
   static unicodeType(segment: string): boolean {
+    if (platform === 'linux') {
+      return false
+    }
     return (addon as NativeAddon).unicodeType(segment)
   }
 
@@ -408,6 +426,10 @@ export class WindowManager {
    * @returns 是否成功
    */
   static simulateMouseMove(x: number, y: number): boolean {
+    if (platform === 'linux') {
+      return false
+    }
+
     if (typeof x !== 'number' || typeof y !== 'number') {
       throw new TypeError('x and y must be numbers')
     }
@@ -424,6 +446,10 @@ export class WindowManager {
    * @returns 是否成功
    */
   static simulateMouseClick(x: number, y: number): boolean {
+    if (platform === 'linux') {
+      return false
+    }
+
     if (typeof x !== 'number' || typeof y !== 'number') {
       throw new TypeError('x and y must be numbers')
     }
@@ -440,6 +466,10 @@ export class WindowManager {
    * @returns 是否成功
    */
   static simulateMouseDoubleClick(x: number, y: number): boolean {
+    if (platform === 'linux') {
+      return false
+    }
+
     if (typeof x !== 'number' || typeof y !== 'number') {
       throw new TypeError('x and y must be numbers')
     }
@@ -456,6 +486,10 @@ export class WindowManager {
    * @returns 是否成功
    */
   static simulateMouseRightClick(x: number, y: number): boolean {
+    if (platform === 'linux') {
+      return false
+    }
+
     if (typeof x !== 'number' || typeof y !== 'number') {
       throw new TypeError('x and y must be numbers')
     }
@@ -514,6 +548,9 @@ export class MouseMonitor {
 
     MouseMonitor._callback = callback
     MouseMonitor._isMonitoring = true
+    if (platform === 'linux') {
+      return
+    }
     ;(addon as NativeAddon).startMouseMonitor(buttonType, longPressMs, () => {
       if (MouseMonitor._callback) {
         return MouseMonitor._callback()
@@ -529,7 +566,9 @@ export class MouseMonitor {
       return
     }
 
-    ;(addon as NativeAddon).stopMouseMonitor()
+    if (platform !== 'linux') {
+      ;(addon as NativeAddon).stopMouseMonitor()
+    }
     MouseMonitor._isMonitoring = false
     MouseMonitor._callback = null
   }
@@ -691,6 +730,18 @@ export class ColorPicker {
 
     ColorPicker._callback = callback
     ColorPicker._isActive = true
+
+    if (platform === 'linux') {
+      // Linux 暂不支持 ColorPicker，直接返回失败
+      ColorPicker._isActive = false
+      if (ColorPicker._callback) {
+        const cb = ColorPicker._callback
+        ColorPicker._callback = null
+        cb({ success: false, hex: null })
+      }
+      return
+    }
+
     ;(addon as NativeAddon).startColorPicker((result) => {
       ;(addon as NativeAddon).stopColorPicker()
 
@@ -711,7 +762,9 @@ export class ColorPicker {
       return
     }
 
-    ;(addon as NativeAddon).stopColorPicker()
+    if (platform !== 'linux') {
+      ;(addon as NativeAddon).stopColorPicker()
+    }
     ColorPicker._isActive = false
     ColorPicker._callback = null
   }
