@@ -105,7 +105,6 @@ declare global {
         packageDevProject: (pluginName: string) => Promise<{ success: boolean; error?: string }>
         deletePlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
         killPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
-        reloadPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
         revealInFinder: (filePath: string) => Promise<void>
         launch: (options: {
           path: string
@@ -183,10 +182,6 @@ declare global {
         exportAllData: () => Promise<{
           success: boolean
           folderPath?: string
-          error?: string
-        }>
-        packagePlugin: (pluginPath: string) => Promise<{
-          success: boolean
           error?: string
         }>
         exportAllPlugins: () => Promise<{

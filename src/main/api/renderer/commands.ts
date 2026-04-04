@@ -883,7 +883,7 @@ export class AppsAPI {
   /**
    * 固定应用
    */
-  private pinApp(app: any): void {
+  public pinApp(app: any): void {
     try {
       const pinnedApps: any[] = databaseAPI.dbGet('pinned-commands') || []
 
@@ -921,7 +921,7 @@ export class AppsAPI {
   /**
    * 取消固定
    */
-  private unpinApp(appPath: string, featureCode?: string, name?: string): void {
+  public unpinApp(appPath: string, featureCode?: string, name?: string): void {
     try {
       const originalPinnedApps: any[] = databaseAPI.dbGet('pinned-commands') || []
 
@@ -1013,7 +1013,7 @@ export class AppsAPI {
    * 返回处理后的 commands、regexCommands 和 plugins
    * 结果会被缓存，直到应用列表、插件状态或 alias 映射发生变化时清除
    */
-  private async getCommands(): Promise<{
+  public async getCommands(): Promise<{
     commands: any[]
     regexCommands: any[]
     plugins: any[]

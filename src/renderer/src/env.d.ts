@@ -113,7 +113,6 @@ declare global {
         error?: string
       }>
       deletePlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
-      reloadPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
       getRunningPlugins: () => Promise<string[]>
       killPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
       killPluginAndReturn: (pluginPath: string) => Promise<{ success: boolean; error?: string }>

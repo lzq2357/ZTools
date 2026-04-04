@@ -17,8 +17,7 @@ defineEmits<{
   (e: 'uninstall'): void
   (e: 'kill'): void
   (e: 'open-folder'): void
-  (e: 'package'): void
-  (e: 'reload'): void
+
   (e: 'toggle-pin'): void
   (e: 'toggle-disabled', disabled: boolean): void
 }>()
@@ -42,8 +41,6 @@ defineEmits<{
     @uninstall="$emit('uninstall')"
     @kill="$emit('kill')"
     @open-folder="$emit('open-folder')"
-    @package="$emit('package')"
-    @reload="$emit('reload')"
     @toggle-pin="$emit('toggle-pin')"
     @toggle-disabled="$emit('toggle-disabled', $event)"
   />

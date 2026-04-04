@@ -14,7 +14,7 @@ interface ImageAnalysisResult {
   needsAdaptation: boolean // 是否需要自适应
 }
 
-async function analyzeImage(imagePath: string): Promise<ImageAnalysisResult> {
+export async function analyzeImage(imagePath: string): Promise<ImageAnalysisResult> {
   try {
     // 1. 处理不同格式的图片输入
     let imageBuffer: Buffer

@@ -5,10 +5,6 @@ import { router } from '@/router'
  */
 export interface PluginsSettingJumpFunction {
   /**
-   * 安装开发插件
-   */
-  localAddDevPluginFilePath?: string
-  /**
    * 自动打开详情的插件名称
    */
   payload?: string

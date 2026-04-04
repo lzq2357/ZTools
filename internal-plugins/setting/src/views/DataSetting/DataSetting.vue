@@ -245,29 +245,32 @@ onUnmounted(() => {
             :class="{ 'ztools-card': pluginData.pluginName === 'ZTOOLS' }"
             @click="viewPluginDocs(pluginData)"
           >
-            <!-- 主程序特殊图标 -->
-            <div
-              v-if="pluginData.pluginName === 'ZTOOLS'"
-              class="plugin-icon-placeholder ztools-icon"
-            >
-              <div class="i-z-database font-size-24px" />
-            </div>
-            <!-- 插件图标 -->
-            <AdaptiveIcon
-              v-else-if="pluginData.logo"
-              :src="pluginData.logo"
-              class="plugin-icon"
-              alt="插件图标"
-              draggable="false"
-            />
-            <div v-else class="plugin-icon-placeholder">
-              <div class="i-z-plugin font-size-24px"></div>
+            <!-- 图标区域（含 DEV 角标） -->
+            <div class="plugin-icon-wrapper">
+              <!-- 主程序特殊图标 -->
+              <div
+                v-if="pluginData.pluginName === 'ZTOOLS'"
+                class="plugin-icon-placeholder ztools-icon"
+              >
+                <div class="i-z-database font-size-24px" />
+              </div>
+              <!-- 插件图标 -->
+              <AdaptiveIcon
+                v-else-if="pluginData.logo"
+                :src="pluginData.logo"
+                class="plugin-icon"
+                alt="插件图标"
+                draggable="false"
+              />
+              <div v-else class="plugin-icon-placeholder">
+                <div class="i-z-plugin font-size-24px"></div>
+              </div>
+              <span v-if="pluginData.isDevelopment" class="plugin-dev-badge">DEV</span>
             </div>
 
             <div class="plugin-info">
               <h3 class="plugin-name">
                 <span>{{ getDisplayName(pluginData) }}</span>
-                <span v-if="pluginData.isDevelopment" class="plugin-dev-tag">DEV</span>
               </h3>
               <span class="doc-count"
                 >{{ pluginData.docCount }} 个文档 / {{ pluginData.attachmentCount }} 个附件</span
@@ -472,7 +475,6 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  margin-right: 14px;
   flex-shrink: 0;
   object-fit: cover;
 }
@@ -481,7 +483,6 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  margin-right: 14px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -489,6 +490,32 @@ onUnmounted(() => {
   background: var(--active-bg);
   color: var(--text-secondary);
   opacity: 0.6;
+}
+
+.plugin-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 14px;
+  width: 40px;
+  height: 40px;
+}
+
+.plugin-dev-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: inline-flex;
+  min-width: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bg-color);
+  border-radius: 999px;
+  background: #389e0d;
+  color: var(--text-on-primary);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
 }
 
 .plugin-info {
@@ -504,17 +531,6 @@ onUnmounted(() => {
   font-weight: 500;
   color: var(--text-color);
   margin-bottom: 4px;
-}
-
-.plugin-dev-tag {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--purple-color);
-  background: var(--purple-light-bg);
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--purple-border);
 }
 
 .doc-count {

@@ -19,22 +19,6 @@ addZtoolsCodeEventListener('function.local-launch-add', (e) => {
 })
 
 /**
- * 添加开发中插件
- */
-addZtoolsCodeEventListener('function.add-dev-plugin', (e) => {
-  const { payload, code } = e.pluginEnterParams
-  console.info(`[code-event] ${code} 成功接收事件`)
-  const files = Array.isArray(payload) ? payload : []
-  if (files.length > 0) {
-    void e.router.replace({
-      name: e.getParamsKey('router'),
-      query: { _t: Date.now() },
-      state: { localAddDevPluginFilePath: files[0].path }
-    })
-  }
-})
-
-/**
  * 插件市场搜索
  */
 addZtoolsCodeEventListener('function.plugin-market-search', async (e) => {

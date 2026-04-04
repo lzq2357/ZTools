@@ -11,8 +11,6 @@ import { useRouter } from 'vue-router'
 // }>()
 
 const { success, error, warning, info, confirm } = useToast()
-// 开发者工具插件的固定名称，用于自动重装场景
-const DEV_TOOL_PLUGIN_NAME = 'zTools-developer-plugin'
 
 // 插件相关状态
 const plugins = ref<any[]>([])
@@ -20,13 +18,10 @@ const disabledPluginPaths = ref<string[]>([])
 const runningPlugins = ref<string[]>([])
 const isLoading = ref(true)
 const isImporting = ref(false)
-const isImportingDev = ref(false)
 const isImportingNpm = ref(false)
 const isDeleting = ref(false)
 const isKilling = ref(false)
 const isKillingAll = ref(false)
-const isReloading = ref(false)
-const isPackaging = ref(false)
 const isExportingAll = ref(false)
 // 是否正在执行“全部更新”
 const isUpgradingAll = ref(false)
@@ -323,76 +318,6 @@ async function importPlugin(): Promise<void> {
   }
 }
 
-// 添加开发中插件
-async function importDevPlugin(): Promise<void> {
-  if (isImportingDev.value) return
-
-  isImportingDev.value = true
-  try {
-    const result = await window.ztools.internal.importDevPlugin()
-    if (result.success) {
-      if (result.pluginName === DEV_TOOL_PLUGIN_NAME) {
-        const installResult = await window.ztools.internal.installDevPlugin(result.pluginName)
-        if (!installResult.success) {
-          error(`安装开发者工具失败: ${installResult.error}`)
-          return
-        }
-      }
-      // 重新加载插件列表
-      await loadPlugins()
-      // 关闭更多菜单
-      showMoreMenu.value = false
-      if (result.pluginName === DEV_TOOL_PLUGIN_NAME) {
-        success('开发者工具已重新安装，可继续使用。')
-      } else {
-        success('开发项目已添加，请在 zTools 开发者工具中点击“安装（开发模式）”。')
-      }
-    } else {
-      error(`添加开发中插件失败: ${result.error}`)
-    }
-  } catch (err: any) {
-    console.error('添加开发中插件失败:', err)
-    error(`添加开发中插件失败: ${err.message || '未知错误'}`)
-  } finally {
-    isImportingDev.value = false
-  }
-}
-
-// 自动添加开发插件（从文件路径）
-async function addDevPluginByFilePath(devPluginFilePath: string): Promise<void> {
-  const filePath = devPluginFilePath
-  if (!filePath || isImportingDev.value) return
-
-  isImportingDev.value = true
-  try {
-    const result = await window.ztools.internal.importDevPlugin(filePath)
-    if (result.success) {
-      if (result.pluginName === DEV_TOOL_PLUGIN_NAME) {
-        const installResult = await window.ztools.internal.installDevPlugin(result.pluginName)
-        if (!installResult.success) {
-          error(`安装开发者工具失败: ${installResult.error}`)
-          return
-        }
-      }
-      // 重新加载插件列表
-      await loadPlugins()
-      if (result.pluginName === DEV_TOOL_PLUGIN_NAME) {
-        success('开发者工具已重新安装，可继续使用。')
-      } else {
-        success('开发项目已添加，请在 zTools 开发者工具中点击“安装（开发模式）”。')
-      }
-    } else {
-      error(`添加开发中插件失败: ${result.error}`)
-    }
-  } catch (err: any) {
-    console.error('添加开发中插件失败:', err)
-    error(`添加开发中插件失败: ${err.message || '未知错误'}`)
-  } finally {
-    isImportingDev.value = false
-    // emit('add-dev-consumed')
-  }
-}
-
 // 从详情页面卸载插件（确认弹窗在 PluginDetail 中已展示，此处直接执行删除）
 async function handleUninstallFromDetail(plugin: any): Promise<void> {
   if (isDeleting.value) return
@@ -533,55 +458,6 @@ async function handleOpenFolder(plugin: any): Promise<void> {
   }
 }
 
-// 重载插件
-async function handleReloadPlugin(plugin: any): Promise<void> {
-  if (isReloading.value) return
-
-  isReloading.value = true
-  try {
-    const result = await window.ztools.internal.reloadPlugin(plugin.path)
-    if (result.success) {
-      // 重新加载插件列表
-      await loadPlugins()
-      // 注意：插件重载后，主程序会自动刷新指令列表
-      success('插件重载成功!')
-    } else {
-      error(`插件重载失败: ${result.error}`)
-    }
-  } catch (err: any) {
-    console.error('重载插件失败:', err)
-    error(`重载插件失败: ${err.message || '未知错误'}`)
-  } finally {
-    isReloading.value = false
-  }
-}
-
-// 从详情页面重载插件（重载后刷新 selectedPlugin）
-async function handleReloadPluginFromDetail(plugin: any): Promise<void> {
-  if (isReloading.value) return
-
-  isReloading.value = true
-  try {
-    const result = await window.ztools.internal.reloadPlugin(plugin.path)
-    if (result.success) {
-      await loadPlugins()
-      // 更新 selectedPlugin 引用
-      const updated = plugins.value.find((p) => p.path === plugin.path)
-      if (updated) {
-        selectedPlugin.value = updated
-      }
-      success('插件重载成功!')
-    } else {
-      error(`插件重载失败: ${result.error}`)
-    }
-  } catch (err: any) {
-    console.error('重载插件失败:', err)
-    error(`重载插件失败: ${err.message || '未知错误'}`)
-  } finally {
-    isReloading.value = false
-  }
-}
-
 async function handleTogglePluginDisabled(plugin: any, disabled: boolean): Promise<void> {
   try {
     const result = await window.ztools.internal.setPluginDisabled(plugin.path, disabled)
@@ -600,26 +476,6 @@ async function handleTogglePluginDisabled(plugin: any, disabled: boolean): Promi
   } catch (err: any) {
     console.error('更新插件禁用状态失败:', err)
     error(`更新插件状态失败: ${err.message || '未知错误'}`)
-  }
-}
-
-// 打包插件
-async function handlePackagePlugin(plugin: any): Promise<void> {
-  if (isPackaging.value) return
-
-  isPackaging.value = true
-  try {
-    const result = await window.ztools.internal.packagePlugin(plugin.path)
-    if (result.success) {
-      success('插件打包成功!')
-    } else if (result.error !== '已取消') {
-      error(`插件打包失败: ${result.error}`)
-    }
-  } catch (err: any) {
-    console.error('打包插件失败:', err)
-    error(`打包插件失败: ${err.message || '未知错误'}`)
-  } finally {
-    isPackaging.value = false
   }
 }
 
@@ -695,9 +551,7 @@ onMounted(async () => {
 // 处理对应 ztools code 进来的功能
 useJumpFunction((state) => {
   void loadRunningPlugins()
-  if (state.localAddDevPluginFilePath) {
-    void addDevPluginByFilePath(state.localAddDevPluginFilePath)
-  } else if (state.payload) {
+  if (state.payload) {
     void openPluginByPayload(state.payload)
   }
 })
@@ -857,22 +711,6 @@ async function handleInstallFromNpm(data: {
                 </svg>
               </button>
               <div v-if="showMoreMenu" class="more-menu" @click="closeMoreMenu">
-                <button class="more-menu-item" :disabled="isImportingDev" @click="importDevPlugin">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M12 5v14M5 12h14"></path>
-                  </svg>
-                  {{ isImportingDev ? '添加中...' : '添加开发中插件' }}
-                </button>
                 <button
                   class="more-menu-item"
                   :disabled="isImportingNpm"
@@ -964,20 +802,22 @@ async function handleInstallFromNpm(data: {
             :title="plugin.description"
             @click="openPluginDetail(plugin)"
           >
-            <AdaptiveIcon
-              v-if="plugin.logo"
-              :src="plugin.logo"
-              class="plugin-icon"
-              alt="插件图标"
-              draggable="false"
-            />
-            <div v-else class="plugin-icon-placeholder">🧩</div>
+            <div class="plugin-icon-wrapper">
+              <AdaptiveIcon
+                v-if="plugin.logo"
+                :src="plugin.logo"
+                class="plugin-icon"
+                alt="插件图标"
+                draggable="false"
+              />
+              <div v-else class="plugin-icon-placeholder">🧩</div>
+              <span v-if="plugin.isDevelopment" class="plugin-dev-badge">DEV</span>
+            </div>
 
             <div class="plugin-info">
               <div class="plugin-name">
                 {{ plugin.title || plugin.name }}
                 <span class="plugin-version">v{{ plugin.version }}</span>
-                <span v-if="plugin.isDevelopment" class="dev-badge">开发中</span>
                 <span v-if="isPluginDisabled(plugin.path)" class="disabled-badge">已禁用</span>
                 <span v-if="isPluginRunning(plugin.path)" class="running-badge">
                   <span class="status-dot"></span>
@@ -1051,30 +891,6 @@ async function handleInstallFromNpm(data: {
                 </svg>
               </button>
               <button
-                class="icon-btn reload-btn"
-                :disabled="isReloading"
-                title="重新加载 plugin.json 配置文件"
-                @click.stop="handleReloadPlugin(plugin)"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="23 4 23 10 17 10"></polyline>
-                  <polyline points="1 20 1 14 7 14"></polyline>
-                  <path
-                    d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
-                  ></path>
-                </svg>
-              </button>
-              <button
                 class="icon-btn pin-btn"
                 :class="{ 'is-pinned': isPluginPinned(plugin.path) }"
                 :title="isPluginPinned(plugin.path) ? '取消置顶' : '置顶'"
@@ -1132,8 +948,6 @@ async function handleInstallFromNpm(data: {
         @uninstall="handleUninstallFromDetail(selectedPlugin)"
         @kill="handleKillPlugin(selectedPlugin)"
         @open-folder="handleOpenFolder(selectedPlugin)"
-        @package="handlePackagePlugin(selectedPlugin)"
-        @reload="handleReloadPluginFromDetail(selectedPlugin)"
         @toggle-pin="togglePin(selectedPlugin)"
         @toggle-disabled="handleTogglePluginDisabled(selectedPlugin, $event)"
       />
@@ -1291,7 +1105,6 @@ async function handleInstallFromNpm(data: {
   width: 40px;
   height: 40px;
   border-radius: 6px;
-  margin-right: 12px;
   flex-shrink: 0;
 }
 
@@ -1332,14 +1145,33 @@ async function handleInstallFromNpm(data: {
 }
 
 .dev-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--purple-color);
-  background: var(--purple-light-bg);
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--purple-border);
+  display: none;
+}
+
+.plugin-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 12px;
+  width: 40px;
+  height: 40px;
+}
+
+.plugin-dev-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: inline-flex;
+  min-width: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bg-color);
+  border-radius: 999px;
+  background: #389e0d;
+  color: var(--text-on-primary);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
 }
 
 .disabled-badge {
@@ -1421,14 +1253,6 @@ async function handleInstallFromNpm(data: {
 }
 
 .folder-btn:hover {
-  background: var(--primary-light-bg);
-}
-
-.reload-btn {
-  color: var(--primary-color);
-}
-
-.reload-btn:hover:not(:disabled) {
   background: var(--primary-light-bg);
 }
 

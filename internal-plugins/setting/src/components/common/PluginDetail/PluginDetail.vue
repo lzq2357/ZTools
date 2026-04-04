@@ -30,8 +30,6 @@ const emit = defineEmits<{
   (e: 'uninstall'): void
   (e: 'kill'): void
   (e: 'open-folder'): void
-  (e: 'package'): void
-  (e: 'reload'): void
   (e: 'toggle-pin'): void
   (e: 'toggle-disabled', disabled: boolean): void
   (e: 'tab-switch', tabId: TabId): void
@@ -110,8 +108,6 @@ function onSwitchTab(tabId: TabId): void {
         @open="emit('open')"
         @kill="emit('kill')"
         @open-folder="emit('open-folder')"
-        @package="emit('package')"
-        @reload="emit('reload')"
         @uninstall="handleUninstall(() => emit('uninstall'))"
         @toggle-pin="emit('toggle-pin')"
         @toggle-disabled="emit('toggle-disabled', $event)"

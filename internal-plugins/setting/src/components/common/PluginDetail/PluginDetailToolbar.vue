@@ -20,8 +20,6 @@ const emit = defineEmits<{
   (e: 'open'): void
   (e: 'kill'): void
   (e: 'open-folder'): void
-  (e: 'package'): void
-  (e: 'reload'): void
   (e: 'uninstall'): void
   (e: 'toggle-pin'): void
   (e: 'toggle-disabled', disabled: boolean): void
@@ -62,21 +60,6 @@ function handleDisabledToggle(event: Event): void {
       @click="emit('open-folder')"
     >
       <div class="i-z-folder font-size-16px" />
-    </button>
-    <button
-      v-if="isDevelopment"
-      class="icon-btn topbar-action-btn package-btn"
-      title="打包插件为 zpx"
-      @click="emit('package')"
-    >
-      <div class="i-z-package font-size-16px" />
-    </button>
-    <button
-      class="icon-btn topbar-action-btn reload-btn"
-      title="重新加载 plugin.json 配置文件"
-      @click="emit('reload')"
-    >
-      <div class="i-z-refresh font-size-16px" />
     </button>
     <button class="icon-btn topbar-action-btn delete-btn" title="卸载" @click="emit('uninstall')">
       <div class="i-z-trash font-size-16px" />

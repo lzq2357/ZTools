@@ -382,7 +382,7 @@ export class UpdaterAPI {
   /**
    * 检查更新
    */
-  private async checkUpdate(): Promise<any> {
+  public async checkUpdate(): Promise<any> {
     try {
       console.log('[Updater] 开始检查更新...')
 
@@ -449,7 +449,7 @@ export class UpdaterAPI {
   /**
    * 开始更新（手动升级）
    */
-  private async startUpdate(updateInfo: any): Promise<any> {
+  public async startUpdate(updateInfo: any): Promise<any> {
     try {
       console.log('[Updater] 开始更新流程...', updateInfo)
 

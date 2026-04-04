@@ -136,7 +136,7 @@ export class WindowAPI {
     }
   }
 
-  private setWindowOpacity(opacity: number): void {
+  public setWindowOpacity(opacity: number): void {
     if (this.mainWindow) {
       const clampedOpacity = Math.max(0.3, Math.min(1, opacity))
       this.mainWindow.setOpacity(clampedOpacity)
@@ -144,7 +144,7 @@ export class WindowAPI {
     }
   }
 
-  private setTrayIconVisible(visible: boolean): void {
+  public setTrayIconVisible(visible: boolean): void {
     windowManager.setTrayIconVisible(visible)
     console.log('[WindowAPI] 设置托盘图标可见性:', visible)
   }

@@ -74,7 +74,6 @@ const api = {
   }): Promise<any> => ipcRenderer.invoke('install-plugin-from-npm', options),
   deletePlugin: (pluginPath: string) => ipcRenderer.invoke('delete-plugin', pluginPath),
   exportAllPlugins: () => ipcRenderer.invoke('export-all-plugins'),
-  reloadPlugin: (pluginPath: string) => ipcRenderer.invoke('reload-plugin', pluginPath),
   getRunningPlugins: () => ipcRenderer.invoke('get-running-plugins'),
   killPlugin: (pluginPath: string) => ipcRenderer.invoke('kill-plugin', pluginPath),
   killPluginAndReturn: (pluginPath: string) =>
@@ -500,7 +499,6 @@ declare global {
         count?: number
         error?: string
       }>
-      reloadPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
       getRunningPlugins: () => Promise<string[]>
       killPlugin: (pluginPath: string) => Promise<{ success: boolean; error?: string }>
       killPluginAndReturn: (pluginPath: string) => Promise<{ success: boolean; error?: string }>

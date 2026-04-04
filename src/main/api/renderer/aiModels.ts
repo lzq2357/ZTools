@@ -107,7 +107,7 @@ class AiModelsAPI {
   /**
    * 添加 AI 模型
    */
-  private addModel(model: AiModel): { success: boolean; error?: string } {
+  public addModel(model: AiModel): { success: boolean; error?: string } {
     // 验证必填字段
     if (!model.id || !model.label || !model.apiUrl || !model.apiKey) {
       return { success: false, error: '模型ID、名称、API地址和密钥不能为空' }
@@ -132,7 +132,7 @@ class AiModelsAPI {
   /**
    * 更新 AI 模型
    */
-  private updateModel(model: AiModel): { success: boolean; error?: string } {
+  public updateModel(model: AiModel): { success: boolean; error?: string } {
     // 验证必填字段
     if (!model.id || !model.label || !model.apiUrl || !model.apiKey) {
       return { success: false, error: '模型ID、名称、API地址和密钥不能为空' }
@@ -158,7 +158,7 @@ class AiModelsAPI {
   /**
    * 删除 AI 模型
    */
-  private deleteModel(modelId: string): { success: boolean; error?: string } {
+  public deleteModel(modelId: string): { success: boolean; error?: string } {
     const models = this.getAllModels()
 
     // 查找要删除的模型

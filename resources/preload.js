@@ -847,12 +847,15 @@ window.ztools = {
         pluginName,
         configPath
       ),
-    packageDevProject: async (pluginName) =>
-      await electron.ipcRenderer.invoke('internal:package-dev-project', pluginName),
+    packageDevProject: async (pluginName, packagePath, version) =>
+      await electron.ipcRenderer.invoke(
+        'internal:package-dev-project',
+        pluginName,
+        packagePath,
+        version
+      ),
     deletePlugin: async (pluginPath) =>
       await electron.ipcRenderer.invoke('internal:delete-plugin', pluginPath),
-    reloadPlugin: async (pluginPath) =>
-      await electron.ipcRenderer.invoke('internal:reload-plugin', pluginPath),
     getRunningPlugins: async () =>
       await electron.ipcRenderer.invoke('internal:get-running-plugins'),
     killPlugin: async (pluginPath) =>
@@ -876,8 +879,6 @@ window.ztools = {
     exportPluginData: async (pluginRef) =>
       await electron.ipcRenderer.invoke('internal:export-plugin-data', pluginRef),
     exportAllData: async () => await electron.ipcRenderer.invoke('internal:export-all-data'),
-    packagePlugin: async (pluginPath) =>
-      await electron.ipcRenderer.invoke('internal:package-plugin', pluginPath),
     exportAllPlugins: async () => await electron.ipcRenderer.invoke('internal:export-all-plugins'),
     getPluginMemoryInfo: async (pluginPath) =>
       await electron.ipcRenderer.invoke('internal:get-plugin-memory-info', pluginPath),

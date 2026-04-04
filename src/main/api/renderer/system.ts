@@ -157,7 +157,7 @@ export class SystemAPI {
    * Electron 的 shell.showItemInFolder() 是跨平台的 API，
    * 会自动根据操作系统选择相应的文件管理器
    */
-  private async revealInFinder(filePath: string): Promise<void> {
+  public async revealInFinder(filePath: string): Promise<void> {
     try {
       if (!filePath) {
         throw new Error('文件路径不能为空')
@@ -210,7 +210,7 @@ export class SystemAPI {
     menu.popup({ window: this.mainWindow })
   }
 
-  private async selectAvatar(): Promise<any> {
+  public async selectAvatar(): Promise<any> {
     try {
       const result = await dialog.showOpenDialog(this.mainWindow!, {
         title: '选择头像图片',

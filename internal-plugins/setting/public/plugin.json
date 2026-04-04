@@ -49,20 +49,6 @@
       ]
     },
     {
-      "code": "function.add-dev-plugin?router=Plugins",
-      "explain": "添加开发中插件",
-      "icon": "logo.png",
-      "cmds": [
-        {
-          "type": "files",
-          "label": "添加开发中插件",
-          "fileType": "file",
-          "match": "/plugin\\.json$/i",
-          "maxLength": 1
-        }
-      ]
-    },
-    {
       "code": "function.install-plugin?router=PluginInstaller",
       "explain": "安装插件",
       "icon": "logo.png",
@@ -71,7 +57,7 @@
           "type": "files",
           "label": "安装插件",
           "fileType": "file",
-          "match": "/\\.zpx$/i",
+          "match": "/\\.(zpx|zip)$/i",
           "maxLength": 1
         }
       ]

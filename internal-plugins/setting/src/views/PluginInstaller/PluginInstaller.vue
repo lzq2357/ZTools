@@ -3,6 +3,9 @@ import { ref } from 'vue'
 import { useToast } from '@/components'
 import { useJumpFunction } from '@/composables'
 import { PluginInstallerJumpFunction } from '@/views/PluginInstaller/PluginInstaller'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 interface PluginInfo {
   name: string
@@ -25,6 +28,7 @@ const loading = ref(true)
 const errorMsg = ref('')
 const pluginInfo = ref<PluginInfo | null>(null)
 const installing = ref(false)
+const installed = ref(false)
 const showSecurityDialog = ref(false)
 const installFilePath = ref<string>()
 
@@ -68,7 +72,7 @@ async function confirmInstall(): Promise<void> {
       const wasInstalled = pluginInfo.value?.isInstalled
       const actionText = wasInstalled ? '覆盖安装' : '安装'
       success(`插件${actionText}成功`)
-      // 跳转到插件中心并打开插件详情
+      installed.value = true
       if (pluginInfo.value) {
         emit('installed', pluginInfo.value.name)
       }
@@ -80,6 +84,11 @@ async function confirmInstall(): Promise<void> {
   } finally {
     installing.value = false
   }
+}
+
+function outPlugin(): void {
+  router.replace({ name: 'GeneralSetting' })
+  window.ztools.outPlugin()
 }
 
 useJumpFunction<PluginInstallerJumpFunction>((state) => {
@@ -165,7 +174,11 @@ useJumpFunction<PluginInstallerJumpFunction>((state) => {
 
       <!-- 安装按钮 -->
       <div class="installer-actions">
+        <button v-if="installed" class="btn btn-lg btn-solid install-btn" @click="outPlugin">
+          完成
+        </button>
         <button
+          v-else
           class="btn btn-lg btn-solid install-btn"
           :disabled="installing"
           @click="handleInstallClick"
