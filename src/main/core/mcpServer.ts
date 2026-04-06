@@ -390,6 +390,11 @@ class McpServer {
       params?.arguments ?? {}
     )
 
+    // 插件可直接返回 MCP 标准 content 数组（支持 text/image 等多模态内容）
+    if (result && typeof result === 'object' && Array.isArray((result as any).content)) {
+      return { content: (result as any).content }
+    }
+
     return {
       // 同时返回文本结果和结构化结果，方便标准 MCP 客户端和调试工具消费。
       content: [

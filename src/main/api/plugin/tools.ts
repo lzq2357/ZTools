@@ -323,15 +323,18 @@ class PluginToolsAPI {
   }
 
   /**
-   * 生成 MCP 对外暴露的工具名，格式为 ztools.plugin.tool。
+   * 生成 MCP 对外暴露的工具名，格式为 plugin_tool。
    */
   private buildMcpToolName(pluginName: string, toolName: string): string {
+    // 先按双下划线分段（开发插件 name 格式 xxx__dev），各段独立替换非法字符，再用 __ 拼回
     const safePluginName =
       pluginName
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
+        .split('__')
+        .map((part) => part.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''))
+        .join('__')
         .replace(/^_+|_+$/g, '') || 'plugin'
-    return `ztools.${safePluginName}.${toolName}`
+    return `${safePluginName}_${toolName}`
   }
 }
 
