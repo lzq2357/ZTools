@@ -592,7 +592,8 @@ export const useCommandDataStore = defineStore('commandData', () => {
         { name: 'name', weight: 2 },
         { name: 'pinyin', weight: 1.5 },
         { name: 'pinyinAbbr', weight: 1 },
-        { name: 'acronym', weight: 1.5 }
+        { name: 'acronym', weight: 1.5 },
+        { name: 'aliases', weight: 1.5 } // 别名（英文原名、包名等）
       ],
       threshold: 0,
       ignoreLocation: true,

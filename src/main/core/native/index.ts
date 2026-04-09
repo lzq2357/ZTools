@@ -1,4 +1,5 @@
 import os from 'os'
+import { execSync, spawnSync } from 'child_process'
 import { clipboard } from 'electron'
 import macZToolsNative from '../../../../resources/lib/mac/ztools_native.node?asset'
 import winZToolsNative from '../../../../resources/lib/win/ztools_native.node?asset'
@@ -307,7 +308,33 @@ export class WindowManager {
    */
   static activateWindow(identifier: string | number): boolean {
     if (platform === 'linux') {
-      return false
+      // Linux 平台尝试使用 wmctrl 激活窗口
+      try {
+        if (typeof identifier === 'number') {
+          // 如果是 PID，查找对应的窗口 ID
+          // 使用 execSync 确保操作同步执行
+          const stdout = execSync('wmctrl -lp').toString()
+          const lines = stdout.split('\n')
+          for (const line of lines) {
+            const parts = line.split(/\s+/).filter(Boolean)
+            if (parts.length >= 3 && parts[2] === identifier.toString()) {
+              const wid = parts[0]
+              spawnSync('wmctrl', ['-ia', wid])
+              break
+            }
+          }
+        } else if (typeof identifier === 'string' && identifier.startsWith('0x')) {
+          // 如果是窗口 ID
+          spawnSync('wmctrl', ['-ia', identifier])
+        } else {
+          // 如果是字符串，尝试按标题/类名激活
+          spawnSync('wmctrl', ['-a', identifier])
+        }
+        return true
+      } catch (e) {
+        console.error('[Native] Linux activateWindow 失败:', e)
+        return false
+      }
     }
 
     if (platform === 'darwin') {

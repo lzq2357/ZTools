@@ -1,4 +1,4 @@
-import { exec } from 'child_process'
+import { exec, spawn } from 'child_process'
 import type { PluginManager } from '../../managers/pluginManager'
 import { BrowserWindow, clipboard, nativeImage, Notification, shell } from 'electron'
 import { promisify } from 'util'
@@ -40,6 +40,8 @@ export async function executeSystemCommand(
         cmd = 'osascript -e "tell application \\"System Events\\" to restart"'
       } else if (platform === 'win32') {
         cmd = 'shutdown /r /t 0'
+      } else if (platform === 'linux') {
+        cmd = 'systemctl reboot'
       }
       break
 
@@ -48,6 +50,8 @@ export async function executeSystemCommand(
         cmd = 'osascript -e "tell application \\"System Events\\" to shut down"'
       } else if (platform === 'win32') {
         cmd = 'shutdown /s /t 0'
+      } else if (platform === 'linux') {
+        cmd = 'systemctl poweroff'
       }
       break
 
@@ -56,6 +60,9 @@ export async function executeSystemCommand(
         cmd = 'osascript -e "tell application \\"System Events\\" to log out"'
       } else if (platform === 'win32') {
         cmd = 'shutdown /l'
+      } else if (platform === 'linux') {
+        cmd =
+          'gnome-session-quit --logout --no-prompt || xfce4-session-logout --logout || qdbus org.kde.ksmserver /KSMServer logout 0 0 0 || loginctl terminate-user $USER'
       }
       break
 
@@ -65,6 +72,8 @@ export async function executeSystemCommand(
       } else if (platform === 'win32') {
         ctx.mainWindow?.hide()
         cmd = `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Application]::SetSuspendState('Suspend', $false, $false)"`
+      } else if (platform === 'linux') {
+        cmd = 'systemctl suspend'
       }
       break
 
@@ -75,6 +84,8 @@ export async function executeSystemCommand(
           'osascript -e "tell application \\"System Events\\" to keystroke \\"q\\" using {control down, command down}"'
       } else if (platform === 'win32') {
         cmd = 'rundll32.exe user32.dll,LockWorkStation'
+      } else if (platform === 'linux') {
+        cmd = 'xdg-screensaver lock || gnome-screensaver-command -l'
       }
       break
 
@@ -426,6 +437,46 @@ async function handleOpenTerminal(
       end tell
     `
       await execAsync(`osascript -e '${script}'`)
+      console.log('[SystemCmd] 已在终端打开')
+      ctx.mainWindow?.hide()
+      return { success: true }
+    } catch (error) {
+      console.error('[SystemCmd] 在终端打开失败:', error)
+      return { success: false, error: String(error) }
+    }
+  } else if (process.platform === 'linux') {
+    try {
+      // 获取当前用户主目录作为默认路径
+      const folderPath = require('os').homedir()
+
+      // 依次尝试常用的终端启动方式，由于 spawn 不会像 exec 那样容易受到注入攻击
+      // 我们通过尝试启动不同的进程来实现兼容性
+      const tryLaunch = (cmd: string, args: string[]) => {
+        return new Promise<boolean>((resolve) => {
+          const child = spawn(cmd, args, { detached: true, stdio: 'ignore' })
+          child.on('error', () => resolve(false))
+          // 只要进程成功启动（没有立即触发 error 且 pid 存在），就认为成功
+          if (child.pid) {
+            child.unref()
+            resolve(true)
+          }
+        })
+      }
+
+      const launched =
+        (await tryLaunch('exo-open', [
+          '--launch',
+          'TerminalEmulator',
+          '--working-directory',
+          folderPath
+        ])) ||
+        (await tryLaunch('gnome-terminal', [`--working-directory=${folderPath}`])) ||
+        (await tryLaunch('xterm', ['-cd', folderPath]))
+
+      if (!launched) {
+        throw new Error('Could not find a supported terminal emulator')
+      }
+
       console.log('[SystemCmd] 已在终端打开')
       ctx.mainWindow?.hide()
       return { success: true }
