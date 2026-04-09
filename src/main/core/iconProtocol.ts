@@ -24,7 +24,7 @@ function setIconCache(key: string, buffer: Buffer): void {
 }
 
 /**
- * 根据平台提取图标并返回 PNG Buffer（异步）
+ * 根据平台提取图标并返回 PNG Buffer（异步，直接调用原生，无队列）
  */
 async function extractIcon(iconPath: string): Promise<Buffer> {
   const iconBuffer = await IconExtractor.getFileIcon(iconPath)
@@ -32,6 +32,25 @@ async function extractIcon(iconPath: string): Promise<Buffer> {
     throw new Error('Failed to extract icon')
   }
   return iconBuffer
+}
+
+/**
+ * 串行图标提取队列
+ * macOS AppKit 图标 API 在高并发下可能返回 null，使用 promise 链确保每次只有一个提取任务在执行
+ */
+let extractionQueue: Promise<void> = Promise.resolve()
+
+/**
+ * 通过串行队列提取图标，确保原生调用不并发执行
+ */
+function extractIconQueued(iconPath: string): Promise<Buffer> {
+  const task = extractionQueue.then(() => extractIcon(iconPath))
+  // 更新队列尾部，忽略错误不阻塞后续任务
+  extractionQueue = task.then(
+    () => undefined,
+    () => undefined
+  )
+  return task
 }
 
 /**
@@ -80,7 +99,7 @@ export async function getFileIconAsBase64(filePath: string): Promise<string> {
     return `data:image/png;base64,${cached.toString('base64')}`
   }
 
-  const buffer = await extractIcon(filePath)
+  const buffer = await extractIconQueued(filePath)
 
   // 写入内存缓存
   setIconCache(filePath, buffer)
@@ -109,8 +128,8 @@ export function registerIconProtocolForSession(targetSession: Electron.Session):
         return createIconResponse(cached)
       }
 
-      // 未命中：提取图标
-      const buffer = await extractIcon(iconPath)
+      // 未命中：通过串行队列提取图标
+      const buffer = await extractIconQueued(iconPath)
 
       // 写入内存缓存
       setIconCache(iconPath, buffer)
